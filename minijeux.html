@@ -122,9 +122,11 @@
   .sn-controls { display: flex; gap: 8px; align-items: center; }
   .sn-stats { display: flex; gap: 16px; margin-bottom: 1rem; font-size: 14px; color: var(--text2); }
   .sn-stats strong { font-weight: 500; color: var(--text); }
-  .sn-wrap { position: relative; display: inline-block; }
+  .sn-wrap { position: relative; display: inline-block; max-width: 100%; }
+  .sn-pad { display: none; gap: 8px; margin-top: 10px; }
+  @media (pointer: coarse) { .sn-pad { display: flex; } }
   #snCanvas {
-    display: block;
+    display: block; max-width: 100%; height: auto; touch-action: none;
     border: 0.5px solid var(--border2);
     border-radius: var(--radius);
     background: var(--surface);
@@ -226,19 +228,19 @@
   <p class="hub-title">Mini-jeux</p>
   <p class="hub-sub">Tes petits compagnons de pause — clique sur un jeu disponible pour jouer</p>
   <div class="cards-grid">
-    <div class="card ready" onclick="startGame('wordle')">
+    <div class="card ready" role="button" tabindex="0" onclick="startGame('wordle')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('wordle')}">
       <span class="card-icon">🟩</span>
       <span class="card-name">Wordle</span>
       <p class="card-desc">Devine le mot en 6 essais</p>
       <span class="badge ready">✓ disponible</span>
     </div>
-    <div class="card ready" onclick="startGame('minesweeper')">
+    <div class="card ready" role="button" tabindex="0" onclick="startGame('minesweeper')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('minesweeper')}">
       <span class="card-icon">💣</span>
       <span class="card-name">Démineur</span>
       <p class="card-desc">Évite les mines, libère la grille</p>
       <span class="badge ready">✓ disponible</span>
     </div>
-    <div class="card ready" onclick="startGame('snake')">
+    <div class="card ready" role="button" tabindex="0" onclick="startGame('snake')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('snake')}">
       <span class="card-icon">🐍</span>
       <span class="card-name">Snake</span>
       <p class="card-desc">Mange, grandis, ne te mords pas</p>
@@ -284,7 +286,7 @@
   </div>
   <div class="grid-wrap"><div class="ms-grid" id="msGrid"></div></div>
   <div class="banner" id="msBanner"></div>
-  <p class="hint">Clic gauche = révéler &nbsp;·&nbsp; Clic droit = drapeau</p>
+  <p class="hint">Clic gauche = révéler &nbsp;·&nbsp; Clic droit ou appui long = drapeau</p>
 </template>
 
 
@@ -309,8 +311,14 @@
     <canvas id="snCanvas" width="400" height="400"></canvas>
     <div class="sn-overlay" id="snOverlay">
       <p>🐍 Snake</p>
-      <small>Flèches ou ZQSD pour jouer</small>
+      <small>Flèches, ZQSD ou swipe pour démarrer</small>
     </div>
+  </div>
+  <div class="sn-pad">
+    <button class="btn" data-dir="U" aria-label="Haut">↑</button>
+    <button class="btn" data-dir="L" aria-label="Gauche">←</button>
+    <button class="btn" data-dir="D" aria-label="Bas">↓</button>
+    <button class="btn" data-dir="R" aria-label="Droite">→</button>
   </div>
   <p class="hint" style="margin-top:8px;">Flèches directionnelles ou Z Q S D &nbsp;·&nbsp; Le serpent traverse les murs</p>
 </template>
@@ -328,7 +336,7 @@
       <button class="btn" id="wdReset">Nouveau mot</button>
     </div>
   </div>
-  <div class="wd-msg" id="wdMsg"></div>
+  <div class="wd-msg" id="wdMsg" aria-live="polite"></div>
   <div class="wd-grid" id="wdGrid"></div>
   <div class="wd-keyboard" id="wdKeyboard"></div>
 </template>
@@ -349,6 +357,7 @@ function startGame(id) {
     document.removeEventListener('keydown', snKeyHandler);
     document.addEventListener('keydown', snKeyHandler);
     initSnake();
+    snInitTouch();
     document.getElementById('snReset').addEventListener('click', () => { if(document.activeElement) document.activeElement.blur(); initSnake(); });
     document.getElementById('snDiff').addEventListener('change', () => { if(document.activeElement) document.activeElement.blur(); initSnake(); });
   }
@@ -441,8 +450,7 @@ function msClick(r, c) {
   msReveal(r,c); msCheckWin(); msRender();
 }
 
-function msRightClick(e, r, c) {
-  e.preventDefault();
+function msToggleFlag(r, c) {
   if (msOver||msRevealed[r][c]) return;
   msFlagged[r][c]=!msFlagged[r][c];
   const flags=msFlagged.flat().filter(Boolean).length;
@@ -485,8 +493,13 @@ function msRender() {
     } else if (msFlagged[r][c]) {
       d.textContent='🚩';
     }
-    d.addEventListener('click',()=>msClick(r,c));
-    d.addEventListener('contextmenu',e=>msRightClick(e,r,c));
+    let lp=null, fired=false;
+    d.addEventListener('touchstart',()=>{ fired=false; lp=setTimeout(()=>{ fired=true; msToggleFlag(r,c); },450); },{passive:true});
+    const cancel=()=>clearTimeout(lp);
+    d.addEventListener('touchmove',cancel,{passive:true});
+    d.addEventListener('touchend',e=>{ cancel(); if(fired) e.preventDefault(); });
+    d.addEventListener('click',()=>{ if(!fired) msClick(r,c); fired=false; });
+    d.addEventListener('contextmenu',e=>{ e.preventDefault(); if(!fired) msToggleFlag(r,c); });
     g.appendChild(d);
   }
 }
@@ -496,87 +509,94 @@ function msRender() {
 ════════════════════════════════════════════ */
 const WD_WORDS = {
   5: [
-    "aimer","arbre","blond","boire","calme","carpe","champ","chant","chaud","clair",
-    "coeur","comme","conte","corps","coude","coupe","court","crane","creux","crime",
-    "danse","debut","droit","durer","eclat","eleve","enfin","epais","etoile","fauve",
-    "ferme","fille","fleur","foret","forte","foyer","franc","frere","froid","fruit",
-    "fusee","gagne","garni","genou","glace","grace","grain","grand","grave","guere",
-    "guide","herbe","heure","hiver","homme","hotel","image","jardin","jeune","jouer",
-    "jouet","jumeau","laine","large","lecon","leger","lente","libre","livre","local",
-    "lundi","lune","lutte","marin","masse","matin","mieux","monde","monts","moral",
-    "morte","motif","mouil","mouton","nager","nappe","neige","neuf","niche","noble",
-    "noire","nuage","nuite","oasis","odeur","olive","ongle","ordre","outil","paire",
-    "palme","passe","peine","pente","perle","piste","pitie","place","plage","plein",
-    "plume","poids","point","pomme","porte","poule","prise","prone","prose","prune",
-    "queue","raisin","rapide","reine","repos","rever","rides","riviere","roche","roman",
-    "rouge","route","ruche","sable","saint","sauce","saule","seche","signe","sobre",
-    "soeur","soiee","solde","soleil","sonde","sorte","soupe","stade","style","suite",
-    "table","tasse","terre","tirer","titre","toile","tombe","tonde","tonte","total",
-    "totem","toucher","trame","trier","trois","trone","trust","ultra","union","usine",
-    "utile","valse","veine","venir","verre","vitre","vivre","voile","volte","voter"
+    "aimer","album","appel","arbre","avion","bague","balle","bijou","blond","boire",
+    "bruit","cadre","calme","camps","carpe","chair","champ","chant","chaos","chaud",
+    "chien","cible","clair","clown","coeur","comme","conte","corps","coude","coupe",
+    "cours","court","crane","creux","crime","crise","dalle","danse","debut","dette",
+    "drame","droit","durer","eclat","ecole","eleve","enfin","epais","fable","faute",
+    "fauve","fente","ferme","fetes","fille","fleur","foret","forme","forte","foyer",
+    "franc","frere","frigo","froid","fruit","fusee","gagne","gamin","genou","geste",
+    "glace","grace","grain","grand","grave","greve","guere","guide","hamac","herbe",
+    "heure","hiver","homme","hotel","humus","ideal","igloo","image","index","jeune",
+    "joint","jouer","jouet","juste","laine","lapin","large","lecon","leger","lente",
+    "libre","ligne","livre","local","loupe","lundi","lutin","lutte","magie","maire",
+    "marin","masse","matin","merci","metal","mieux","mince","monde","moral","morte",
+    "motif","musee","nager","nappe","neige","nerfs","niche","noble","noire","nuage",
+    "oasis","ocean","odeur","olive","ombre","ongle","opera","orage","ordre","outil",
+    "paire","palme","passe","pause","peine","pente","perle","piano","piste",
+    "pitie","place","plage","plein","plomb","plume","poete","poids","point","pomme",
+    "poney","porte","poule","prime","prise","prose","prune","queue","radio","radis",
+    "rampe","reine","repos","rever","rides","rival","robot","roche","roman","rouge",
+    "route","ruban","ruche","sable","saint","salle","sapin","sauce","saule","savon",
+    "scene","seche","selle","signe","singe","sirop","sobre","soeur","solde","sonde",
+    "sorte","soupe","sport","stade","style","sucre","suite","table","talon","tante",
+    "tapis","tasse","tenir","tente","terre","texte","tirer","tissu","titre",
+    "toile","tombe","total","totem","trame","trier","trois","trone","tuile","tuyau",
+    "union","usine","utile","vague","valse","veine","venir","verre","vigne","ville",
+    "vitre","vivre","voile","voter","zebre"
   ],
   6: [
-    "amical","ancien","animal","arbres","argent","arrobe","artiste","beaute","besoin",
-    "billet","bivouac","bonheur","branche","bureau","canard","carton","cerise","chaise",
-    "chemin","cheval","cinema","cloche","combat","copain","couche","couloir","couple",
-    "crible","cuisse","danser","debout","desert","devise","donner","dormir","dresser",
-    "eclair","ecrire","effort","enfant","entier","espoir","etudiant","eviter","farine",
-    "favori","fenetre","feuille","fleuve","forcer","forger","fouler","fragile","fraise",
-    "fromage","galerie","garage","garcon","gateau","gloire","gorille","greffe","grotte",
-    "guitare","hameau","hamster","herisse","hirond","humain","humide","ignorer","jardin",
-    "jasmin","joyeux","jungle","lavoir","levier","limite","loisir","lumiere","manger",
-    "manque","marche","marier","marron","meduse","metier","milieu","miroir","mobile",
-    "modele","monter","mouton","mystere","naitre","nature","niveau","normal","nourrir",
-    "nuance","obtenir","orange","oreille","ouvrir","papier","pardon","parler","partir",
-    "passer","patron","pavage","pelouse","perdre","phrase","pierre","pigeon","pilote",
-    "pirate","pisser","plante","platon","pleurer","pluie","poivre","pomper","porter",
-    "poteau","poudre","poulet","prairie","public","puzzle","racine","radeau","ranger",
-    "rappel","rayure","regard","region","relier","rendre","repere","reseau","revoir",
-    "risque","rivage","robinet","roseau","rouler","ruines","safari","saison","samedi",
-    "sanglier","sauter","savant","saveur","scotch","semaine","sombre","songer","sortir",
-    "sourire","starter","statue","succes","talent","tambour","tarder","temple","terrain",
-    "tigre","tisser","tomate","touffe","tracer","trajet","trente","tribu","tronc",
-    "valeur","vapeur","vendeur","verger","vetir","voyage","wallon","yaourt","zapper"
+    "acteur","adulte","agrume","alarme","alcool","amande","amical","amitie","ananas",
+    "ancien","animal","arbres","arcade","argent","audace","auteur","avenir","avocat","balcon",
+    "ballon","banane","barque","bateau","beaute","besoin","billet","bonbon","bouche","bougie",
+    "brique","bureau","cabane","cadeau","cafard","cahier","calcul","camion","canard",
+    "carnet","carton","centre","cerise","chaise","champs","charme","chaton","chemin","cheval",
+    "chimie","cinema","cirque","citron","classe","climat","cloche","cochon","coiffe","colere",
+    "combat","comete","compas","copain","couche","couple","crayon","crible","cuisse","cuivre",
+    "danger","danser","debout","dehors","depart","desert","dessin","detail","devise","devoir",
+    "disque","donner","dormir","dragon","eclair","ecrire","effort","enfant","enigme","entier",
+    "epaule","epoque","escale","espace","espoir","etoile","eviter","farine","favori","figure",
+    "flamme","fleuve","flocon","forcer","forger","fouler","fourmi","fraise","gagner","garage",
+    "garcon","gateau","girafe","glisse","gloire","greffe","grille","grotte","groupe","hameau",
+    "harpon","hasard","hublot","humain","humide","jaguar","jardin","jasmin","joyeux","jumeau",
+    "jungle","lagune","lavoir","lettre","levier","lezard","limite","livret","loisir","loutre",
+    "maison","manger","manque","marche","marier","marque","marron","masque","meduse","menthe",
+    "metier","miette","milieu","miroir","mobile","modele","monter","moteur","moulin","mouton",
+    "naitre","nature","niveau","normal","nuages","nuance","oiseau","orange","ordure","ouvrir",
+    "palais","panier","papier","pardon","parfum","parler","partir","passer","pastel","pastis",
+    "patron","pavage","pelage","perdre","phoque","phrase","pierre","pigeon","pilote","pirate",
+    "plaine","plante","poivre","pomper","porter","poteau","poudre","poulet","prince","prisme",
+    "public","puzzle","racine","radeau","raisin","ranger","rapide","rappel","rayure","reflet",
+    "regard","region","relier","renard","rendre","repere","requin","reseau","reunir","revoir",
+    "rideau","risque","rivage","rocher","roseau","rosier","rouler","ruines","rythme","safari",
+    "saison","samedi","saphir","sauter","savant","saveur","sirene","soldat","soleil","sombre",
+    "songer","sortir","soupir","statue","succes","talent","tarder","temple","tendre","tisser",
+    "tomate","tordre","tortue","touffe","tracer","trajet","trefle","trente","tresor","tricot",
+    "tulipe","tunnel","urgent","valeur","valise","vapeur","verger","violon","visage","volcan",
+    "voyage","yaourt","zapper"
   ],
   7: [
-    "aborder","absurde","accueil","acheter","adapter","admirer","adresse","agencer",
-    "agrandir","aiguille","ajouter","alerter","aligner","aliment","allegre","allumer",
-    "ambiance","ambigu","amorcer","ampleur","analyser","annonce","antenne","apparent",
-    "appeler","apporter","apprendre","aptitude","araigne","arbitre","ardoise","argenter",
-    "arriver","assiette","associer","attirer","audace","aurevoir","ausculte","automne",
-    "avancer","balancer","barriere","bataille","batiment","beaumont","benefice","bientot",
-    "bleuets","boisson","boucher","bouleau","bouquet","boutique","bricoler","briller",
-    "brocher","calculer","campagne","canaille","capable","caresser","cartoon","certain",
-    "chaleur","chambre","chanson","charger","chasser","cheminer","choisir","circuit",
-    "claveau","clavier","clochette","combine","commode","complet","compris","confort",
-    "contenu","continu","convenu","correct","couleur","courant","courber","couvrir",
-    "culture","curieux","debuter","decider","decoupe","defaire","degager","demande",
-    "depenser","derives","dessert","devenir","deviner","digital","diminue","discret",
-    "dispute","domaine","donnees","dossier","dresser","durcir","echange","echelle",
-    "eclairer","ecouter","effacer","egalite","elargir","emballe","empiler","encoder",
-    "endroit","energie","enfonce","enlever","enrichir","entamer","entiere","environ",
-    "estimer","etonner","evaluer","evident","examiner","exercer","exister","experte",
-    "facette","famille","fatigue","fauteur","fenetre","fichier","figurer","finance",
-    "finesse","fissure","fonctio","fortune","foulard","franchise","frontiere","fuselage",
-    "garante","general","generer","glorieux","gondole","grandir","gratuit","habituel",
-    "harmonie","hasarde","histoire","hommage","horizon","humaine","identite","imaginer",
-    "immense","implique","inconnu","indiquer","infinie","interne","inviter","jardiner",
-    "joueurs","journal","justice","langage","lecture","liaison","liberte","machine",
-    "maintien","malaise","maniere","marcheur","marteler","matiere","memoire","menteur",
-    "message","mesuree","montagne","montrer","motiver","mouille","musique","mystique",
-    "naturer","navigue","nettoyer","nouveau","nourrir","nuancer","obliger","obtenir",
-    "occuper","offense","opposer","organise","origine","oublier","paisible","partager",
-    "passage","patient","peindre","penseur","perfect","periode","permett","perturbe",
-    "planete","plonger","pointer","polaire","policer","possible","poursuiv","pratiquer",
-    "premier","prendre","preparer","present","pression","prevenir","principe","produit",
-    "profond","projeter","propres","proteger","provoquer","realiser","recette","recharg",
-    "recouvr","redonner","refuser","regulier","rejoindre","relacher","remarque","remplir",
-    "renfort","repartir","repenser","resiste","resultat","rethink","reunir","risquer",
-    "robuste","rougeur","rythme","sauvage","science","securite","sembler","service",
-    "silence","sincere","societe","soutenir","spectre","station","stocker","sublime",
-    "surface","surtout","systeme","tableau","tactile","terminer","terrain","tordre",
-    "toucher","traduit","traiter","tranquil","travail","traverser","trouver","utiliser",
-    "vaincre","valider","vecteur","verdure","village","vitesse","volonte","voucher"
+    "abeille","aborder","abricot","absurde","accueil","acheter","adapter","admirer","adresse","aimable",
+    "ajouter","alerter","aligner","aliment","allumer","ampleur","animaux","annonce","antenne","appeler",
+    "arbitre","ardoise","armoire","arriere","arriver","article","artiste","aspirer","atelier","attirer",
+    "automne","avancer","bagarre","baleine","bandage","bientot","bivouac","boisson","bonheur","bonjour",
+    "boucher","bouleau","bouquet","branche","briller","brocher","cabinet","cadence",
+    "capable","cascade","certain","cerveau","chaleur","chambre","chanson","chanter","chapeau","charger",
+    "chariot","chasser","chateau","chemise","chiffre","choisir","cigogne","circuit","clavier","combine",
+    "commode","complet","concert","confort","contenu","continu","correct","couleur","couloir","courant",
+    "courber","couteau","couvert","couvrir","cuisine","culture","curieux","dauphin","debuter","decider",
+    "defaire","demande","dessert","devenir","deviner","diamant","digital","discret","dispute","docteur",
+    "domaine","donnees","dossier","dresser","echange","echelle","eclipse","ecouter","effacer","egalite",
+    "elegant","empiler","endroit","energie","enlever","enquete","environ","epinard","estimer","etagere",
+    "etonner","evaluer","evident","exercer","exister","facette","famille","fanfare","fantome","fatigue",
+    "fenetre","fermier","feuille","fichier","figurer","finance","finesse","fissure","fortune","foulard",
+    "fragile","fromage","fusible","galaxie","galerie","gazelle","general","generer","glacier","gondole",
+    "gorille","grandir","gratuit","grenier","gruyere","guitare","hamster","herisse","hommage","hopital",
+    "horaire","horizon","iceberg","ignorer","immense","inconnu","insecte","interne","inviter","journal",
+    "journee","justice","langage","lavande","lecture","legumes","liaison","liberte","licorne","lumiere",
+    "machine","magasin","magique","maillot","malaise","maniere","marmite","matiere","medecin","melange",
+    "memoire","menteur","message","meteore","miracle","mission","moineau","monnaie","monstre","montrer",
+    "motiver","musique","mystere","nacelle","nourrir","nouveau","nuancer","obliger","obtenir","occuper",
+    "offense","opposer","oreille","origine","oublier","oxygene","panneau","passage","patient","peindre",
+    "pelican","pelouse","pendule","penseur","periode","pinceau","piscine","plafond","planete","pleurer",
+    "plonger","pointer","poisson","polaire","pompier","pouvoir","prairie","premier","prendre","present",
+    "produit","profond","prunier","recette","recolte","refuser","remplir","renfort","resiste","risquer",
+    "riviere","robinet","robuste","romance","rougeur","sablier","sagesse","sandale","sardine","sauvage",
+    "science","semaine","sembler","sentier","serpent","service","sifflet","silence","sincere","societe",
+    "sourire","spectre","spirale","station","stocker","sublime","surface","surtout","systeme","tableau",
+    "tactile","tambour","tempete","terrain","tonneau","toucher","traduit","traiter","trapeze","travail",
+    "trouver","vaincre","valider","vampire","vecteur","velours","vendeur","verdure","vergers","village",
+    "vitesse","voilier","volonte"
   ]
 };
 
@@ -593,6 +613,7 @@ const WD_KB = [
   ['Entrée','W','X','C','V','B','N','←']
 ];
 function wdKeyHandler(e) {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.key === 'Enter')     { wdSubmit(); return; }
   if (e.key === 'Backspace') { wdDelete(); return; }
   const l = e.key.toUpperCase();
@@ -742,11 +763,18 @@ function snKeyHandler(e) {
     z:'U', Z:'U', s:'D', S:'D', q:'L', Q:'L', d:'R', D:'R'
   };
   const dir = map[e.key];
-  if (!dir) return;
+  if (!dir || e.ctrlKey || e.metaKey || e.altKey) return;
   e.preventDefault();
+  snInput(dir);
+}
+
+function snInput(dir) {
+  if (!document.getElementById('snCanvas')) return;
   // Démarrer ou redémarrer si en attente
-  if (!snRunning && document.getElementById('snCanvas')) {
+  if (!snRunning) {
     initSnake();
+    // Au départ le corps est à gauche de la tête : on ignore ← (mort immédiate)
+    if (dir === 'L') return;
     snDir = dir; snNext = dir;
     snRunning = true;
     document.getElementById('snOverlay').style.display = 'none';
@@ -757,6 +785,22 @@ function snKeyHandler(e) {
   // Interdire demi-tour
   const opp = { U:'D', D:'U', L:'R', R:'L' };
   if (dir !== opp[snDir]) snNext = dir;
+}
+
+function snInitTouch() {
+  const cv = document.getElementById('snCanvas');
+  let t0 = null;
+  cv.addEventListener('touchstart', e => { t0 = e.touches[0]; e.preventDefault(); }, { passive:false });
+  cv.addEventListener('touchend', e => {
+    if (!t0) return;
+    const t = e.changedTouches[0], dx = t.clientX - t0.clientX, dy = t.clientY - t0.clientY;
+    t0 = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
+    snInput(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U'));
+    e.preventDefault();
+  }, { passive:false });
+  document.querySelectorAll('.sn-pad button').forEach(b =>
+    b.addEventListener('click', () => snInput(b.dataset.dir)));
 }
 
 function initSnake() {
@@ -771,11 +815,12 @@ function initSnake() {
   document.getElementById('snBest').textContent  = snBest;
   const ov = document.getElementById('snOverlay');
   ov.style.display = 'flex';
-  ov.innerHTML = '<p>🐍 Snake</p><small>Flèches ou ZQSD pour démarrer</small>';
+  ov.innerHTML = '<p>🐍 Snake</p><small>Flèches, ZQSD ou swipe pour démarrer</small>';
   snDraw();
 }
 
 function snPlaceFood() {
+  if (snBody.length >= SN_COLS * SN_ROWS) { snFood = { x:-1, y:-1 }; return; }
   const occupied = new Set(snBody.map(s => s.x + ',' + s.y));
   let f;
   do { f = { x: Math.floor(Math.random()*SN_COLS), y: Math.floor(Math.random()*SN_ROWS) }; }
@@ -799,17 +844,18 @@ function snTick() {
     document.getElementById('snScore').textContent = snScore;
     document.getElementById('snBest').textContent  = snBest;
     snPlaceFood();
+    if (snFood.x < 0) { snDraw(); snGameOver(true); return; }
   } else {
     snBody.pop();
   }
   snDraw();
 }
 
-function snGameOver() {
+function snGameOver(win) {
   snStop();
   const ov = document.getElementById('snOverlay');
   ov.style.display = 'flex';
-  ov.innerHTML = '<p>💀 Game over</p><small>Score : ' + snScore + ' &nbsp;·&nbsp; Flèches ou ZQSD pour rejouer</small>';
+  ov.innerHTML = '<p>' + (win ? '🏆 Grille complète !' : '💀 Game over') + '</p><small>Score : ' + snScore + ' &nbsp;·&nbsp; Flèches, ZQSD ou swipe pour rejouer</small>';
   // Relancer sur prochaine touche directionnelle (géré dans snKeyHandler via snRunning=false)
 }
 
