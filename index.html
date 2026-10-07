@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini-jeux</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ══ MENU ══════════════════════════════════════════════════════════ -->
+<div id="menu">
+  <p class="hub-title">Mini-jeux</p>
+  <p class="hub-sub">Tes petits compagnons de pause — clique sur un jeu disponible pour jouer</p>
+  <div class="menu-bar"><button class="btn" onclick="scShow(currentGame)">🏆 Meilleurs scores</button></div>
+  <div class="cards-grid">
+    <div class="card ready" role="button" tabindex="0" onclick="startGame('wordle')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('wordle')}">
+      <span class="card-icon">🟩</span>
+      <span class="card-name">Wordle</span>
+      <p class="card-desc">Devine le mot en 6 essais</p>
+      <span class="badge ready">✓ disponible</span>
+    </div>
+    <div class="card ready" role="button" tabindex="0" onclick="startGame('minesweeper')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('minesweeper')}">
+      <span class="card-icon">💣</span>
+      <span class="card-name">Démineur</span>
+      <p class="card-desc">Évite les mines, libère la grille</p>
+      <span class="badge ready">✓ disponible</span>
+    </div>
+    <div class="card ready" role="button" tabindex="0" onclick="startGame('snake')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('snake')}">
+      <span class="card-icon">🐍</span>
+      <span class="card-name">Snake</span>
+      <p class="card-desc">Mange, grandis, ne te mords pas</p>
+      <span class="badge ready">✓ disponible</span>
+    </div>
+    <div class="card ready" role="button" tabindex="0" onclick="startGame('2048')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('2048')}">
+      <span class="card-icon">🧩</span>
+      <span class="card-name">2048</span>
+      <p class="card-desc">Fusionne les tuiles, atteins 2048</p>
+      <span class="badge ready">✓ disponible</span>
+    </div>
+    <div class="card ready" role="button" tabindex="0" onclick="startGame('solitaire')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('solitaire')}">
+      <span class="card-icon">🃏</span>
+      <span class="card-name">Solitaire</span>
+      <p class="card-desc">Le classique indémodable</p>
+      <span class="badge ready">✓ disponible</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ GAME SHELL ════════════════════════════════════════════════════ -->
+<div id="game-shell">
+  <div class="shell-bar">
+    <button class="back-btn" onclick="goMenu()">← Retour au menu</button>
+    <button class="btn" onclick="scShow(currentGame)">🏆 Scores</button>
+  </div>
+  <div id="game-content"></div>
+</div>
+
+<!-- ══ TEMPLATE DÉMINEUR ═════════════════════════════════════════════ -->
+<template id="tpl-minesweeper">
+  <div class="ms-header">
+    <span class="ms-title">💣 Démineur</span>
+    <div class="ms-controls">
+      <select id="diff">
+        <option value="easy">Facile — 9×9, 10 mines</option>
+        <option value="medium" selected>Moyen — 16×16, 40 mines</option>
+        <option value="hard">Difficile — 16×30, 99 mines</option>
+      </select>
+      <button class="btn" id="resetBtn">Rejouer</button>
+    </div>
+  </div>
+  <div class="ms-stats">
+    <span>Mines restantes : <strong id="mineCount">40</strong></span>
+    <span>Temps : <strong id="timer">0s</strong></span>
+    <span>Record : <strong id="msBest">—</strong></span>
+  </div>
+  <div class="grid-wrap"><div class="ms-grid" id="msGrid"></div></div>
+  <div class="banner" id="msBanner"></div>
+  <p class="hint">Clic gauche = révéler &nbsp;·&nbsp; Clic droit = drapeau</p>
+</template>
+
+
+<!-- ══ TEMPLATE SNAKE ═══════════════════════════════════════════════ -->
+<template id="tpl-snake">
+  <div class="sn-header">
+    <span class="sn-title">🐍 Snake</span>
+    <div class="sn-controls">
+      <select id="snDiff">
+        <option value="slow">Facile — lent</option>
+        <option value="medium" selected>Moyen</option>
+        <option value="fast">Difficile — rapide</option>
+      </select>
+      <button class="btn" id="snReset">Rejouer</button>
+    </div>
+  </div>
+  <div class="sn-stats">
+    <span>Score : <strong id="snScore">0</strong></span>
+    <span>Meilleur : <strong id="snBest">0</strong></span>
+  </div>
+  <div class="sn-wrap">
+    <canvas id="snCanvas" width="400" height="400"></canvas>
+    <div class="sn-overlay" id="snOverlay">
+      <p>🐍 Snake</p>
+      <small>Flèches ou ZQSD pour démarrer</small>
+    </div>
+  </div>
+  <p class="hint" style="margin-top:8px;">Flèches directionnelles ou Z Q S D &nbsp;·&nbsp; Le serpent traverse les murs</p>
+</template>
+
+<!-- ══ TEMPLATE 2048 ═════════════════════════════════════════════════ -->
+<template id="tpl-2048">
+  <div class="ms-header">
+    <span class="ms-title">🧩 2048</span>
+    <div class="ms-controls">
+      <button class="btn" id="tfReset">Nouvelle partie</button>
+    </div>
+  </div>
+  <div class="ms-stats">
+    <span>Score : <strong id="tfScore">0</strong></span>
+    <span>Meilleur : <strong id="tfBest">0</strong></span>
+  </div>
+  <div class="tf-board" id="tfBoard"></div>
+  <div class="banner" id="tfBanner"></div>
+  <p class="hint">Flèches ou Z Q S D &nbsp;·&nbsp; Deux tuiles identiques fusionnent</p>
+  <details class="rules" open>
+    <summary>Règles et fonctionnement</summary>
+    <ul>
+      <li><strong>But :</strong> faire apparaître une tuile <strong>2048</strong> en fusionnant des tuiles.</li>
+      <li><strong>Déplacer :</strong> flèches du clavier ou touches Z Q S D. Toutes les tuiles glissent d'un coup dans la direction choisie, jusqu'au bord ou jusqu'à la tuile suivante.</li>
+      <li><strong>Fusionner :</strong> deux tuiles de même valeur qui se rencontrent deviennent une seule tuile de valeur double (2+2 = 4, 4+4 = 8…). Le score augmente de la valeur obtenue.</li>
+      <li><strong>Une fusion par tuile et par coup :</strong> en poussant la ligne 2-2-2-2 vers la gauche, on obtient 4-4, pas 8.</li>
+      <li><strong>Nouvelle tuile :</strong> après chaque déplacement qui change la grille, une tuile apparaît sur une case vide (un 2 dans 90 % des cas, un 4 sinon). Un déplacement sans effet ne compte pas.</li>
+      <li><strong>Victoire :</strong> à 2048, tu peux arrêter ou continuer pour battre ton score.</li>
+      <li><strong>Défaite :</strong> la grille est pleine et aucune fusion n'est possible.</li>
+      <li><strong>Astuce :</strong> garde ta plus grosse tuile dans un coin et évite de pousser dans la direction opposée.</li>
+    </ul>
+  </details>
+</template>
+
+<!-- ══ TEMPLATE SOLITAIRE ════════════════════════════════════════════ -->
+<template id="tpl-solitaire">
+  <div class="ms-header">
+    <span class="ms-title">🃏 Solitaire</span>
+    <div class="ms-controls">
+      <select id="solDraw">
+        <option value="1" selected>Pioche : 1 carte</option>
+        <option value="3">Pioche : 3 cartes</option>
+      </select>
+      <button class="btn" id="solUndo">Annuler</button>
+      <button class="btn" id="solReset">Nouvelle donne</button>
+    </div>
+  </div>
+  <div class="ms-stats">
+    <span>Coups : <strong id="solMoves">0</strong></span>
+  </div>
+  <div class="sol-board" id="solBoard"></div>
+  <div class="banner" id="solBanner"></div>
+  <p class="hint">Glisse-dépose une carte (ou clique-la puis sa destination) &nbsp;·&nbsp; Double-clic = fondation ou unique destination possible &nbsp;·&nbsp; Fin de donne automatique &nbsp;·&nbsp; Roi sur colonne vide</p>
+</template>
+
+<!-- ══ TEMPLATE WORDLE ═══════════════════════════════════════════════ -->
+<template id="tpl-wordle">
+  <div class="wd-header">
+    <span class="wd-title">🟩 Wordle</span>
+    <div class="wd-controls">
+      <select id="wdLen">
+        <option value="5">5 lettres</option>
+        <option value="6">6 lettres</option>
+        <option value="7">7 lettres</option>
+      </select>
+      <button class="btn" id="wdReset">Nouveau mot</button>
+    </div>
+  </div>
+  <div class="wd-msg" id="wdMsg" aria-live="polite"></div>
+  <div class="wd-grid" id="wdGrid"></div>
+  <div class="wd-keyboard" id="wdKeyboard"></div>
+</template>
+
+<script src="js/scores.js"></script>
+<script src="js/core.js"></script>
+<script src="js/games/minesweeper.js"></script>
+<script src="js/games/wordle-words.js"></script>
+<script src="js/games/wordle.js"></script>
+<script src="js/games/snake.js"></script>
+<script src="js/games/2048.js"></script>
+<script src="js/games/solitaire.js"></script>
+</body>
+</html>
