@@ -9,6 +9,7 @@ function normalize(str) {
 
 const WD_ROWS = 6;
 let wdLen, wdTarget, wdNormTarget, wdGuesses, wdCurrentRow, wdCurrentCol, wdOver, wdStart = null;
+let wdBusy = false, wdToken = 0, wdMsgTimer = null;   // wdBusy : révélation d'une ligne en cours
 const WD_KB = [
   ['A','Z','E','R','T','Y','U','I','O','P'],
   ['Q','S','D','F','G','H','J','K','L','M'],
@@ -29,13 +30,14 @@ function initWordle() {
   wdNormTarget = normalize(wdTarget);
   wdGuesses    = Array(WD_ROWS).fill(null).map(() => Array(wdLen).fill(''));
   wdCurrentRow = 0; wdCurrentCol = 0; wdOver = false; wdKeyColors = {}; wdStart = null;
-  document.getElementById('wdMsg').textContent = '';
+  wdBusy = false; wdToken++;
+  wdMsg('');
   if (document.activeElement) document.activeElement.blur();
   wdRenderGrid(); wdRenderKeyboard();
 }
 
 function wdType(letter) {
-  if (wdOver || wdCurrentCol >= wdLen) return;
+  if (wdOver || wdBusy || wdCurrentCol >= wdLen) return;
   if (!wdStart) wdStart = Date.now();
   wdGuesses[wdCurrentRow][wdCurrentCol] = letter;
   wdCurrentCol++;
@@ -43,17 +45,18 @@ function wdType(letter) {
 }
 
 function wdDelete() {
-  if (wdOver || wdCurrentCol === 0) return;
+  if (wdOver || wdBusy || wdCurrentCol === 0) return;
   wdCurrentCol--;
   wdGuesses[wdCurrentRow][wdCurrentCol] = '';
   wdRenderGrid();
 }
 
 function wdSubmit() {
-  if (wdOver) return;
-  if (wdCurrentCol < wdLen) { wdMsg('Mot trop court !'); return; }
+  if (wdOver || wdBusy) return;
+  if (wdCurrentCol < wdLen) { wdMsg('Mot trop court !'); wdShake(); Sfx.play('bad'); return; }
   const guess     = wdGuesses[wdCurrentRow].join('');
   const normGuess = normalize(guess);
+  if (!WD_DICT[wdLen].has(normGuess)) { wdMsg('Ce mot n\'est pas dans le dictionnaire'); wdShake(); Sfx.play('bad'); return; }
 
   // Calcul des couleurs
   const result  = Array(wdLen).fill('absent');
@@ -72,26 +75,74 @@ function wdSubmit() {
     if (tCount[g] > 0) { result[i]='present'; tCount[g]--; }
   }
 
-  // Stocke le résultat sur la ligne
-  wdGuesses[wdCurrentRow]._result = result;
+  // Stocke le résultat sur la ligne ; les couleurs apparaissent lettre par lettre (révélation)
+  const row = wdCurrentRow, tok = wdToken;
+  wdGuesses[row]._result = result;
+  wdGuesses[row]._pending = true;
+  wdBusy = true;
   wdRenderGrid();
-  wdUpdateKeyboard(guess, result);
+  wdReveal(row, result, () => {
+    if (tok !== wdToken) return;            // une nouvelle partie a démarré entre-temps
+    wdGuesses[row]._pending = false;
+    wdBusy = false;
+    wdRenderGrid();
+    wdUpdateKeyboard(guess, result);
 
-  if (normGuess === wdNormTarget) {
-    wdOver = true;
-    wdMsg('Bravo ! Le mot était ' + wdTarget + ' 🎉');
-    scSubmit('wordle', String(wdLen), (wdCurrentRow + 1) * 1000 + Math.min(999, Math.round((Date.now() - wdStart) / 1000)));
-    return;
-  }
-  wdCurrentRow++; wdCurrentCol = 0;
-  if (wdCurrentRow >= WD_ROWS) {
-    wdOver = true;
-    wdMsg('Perdu ! Le mot était : ' + wdTarget);
-  }
+    if (normGuess === wdNormTarget) {
+      wdOver = true;
+      wdMsg('Bravo ! Le mot était ' + wdTarget + ' 🎉', true);
+      wdCelebrate(row);
+      Sfx.play('win');
+      scSubmit('wordle', String(wdLen), (row + 1) * 1000 + Math.min(999, Math.round((Date.now() - wdStart) / 1000)));
+      return;
+    }
+    wdCurrentRow++; wdCurrentCol = 0;
+    wdRenderGrid();
+    if (wdCurrentRow >= WD_ROWS) {
+      wdOver = true;
+      wdMsg('Perdu ! Le mot était : ' + wdTarget, true);
+      Sfx.play('lose');
+    }
+  });
 }
 
-function wdMsg(txt) {
-  document.getElementById('wdMsg').textContent = txt;
+// Retourne les tuiles une à une ; à mi-retournement elles prennent leur couleur
+function wdReveal(row, result, done) {
+  const tiles = [...document.querySelectorAll('#wdGrid .wd-row')[row].children];
+  if (!motionOK()) { tiles.forEach((t, i) => t.classList.add(result[i])); done(); return; }
+  let left = tiles.length;
+  tiles.forEach((t, i) => {
+    const a = t.animate([{ transform: 'rotateX(0)' }, { transform: 'rotateX(90deg)' }], { duration: 170, delay: i * 200, fill: 'forwards' });
+    a.onfinish = () => {
+      t.classList.add(result[i]);
+      Sfx.play(result[i] === 'correct' ? 'good' : 'tick');
+      const b = t.animate([{ transform: 'rotateX(90deg)' }, { transform: 'rotateX(0)' }], { duration: 170 });
+      a.cancel();
+      b.onfinish = () => { if (--left === 0) done(); };
+    };
+  });
+}
+
+function wdShake() {
+  const r = document.querySelectorAll('#wdGrid .wd-row')[wdCurrentRow];
+  if (!r || !motionOK()) return;
+  r.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-7px)' }, { transform: 'translateX(7px)' },
+             { transform: 'translateX(-4px)' }, { transform: 'translateX(4px)' }, { transform: 'translateX(0)' }], { duration: 350 });
+}
+
+function wdCelebrate(row) {
+  if (!motionOK()) return;
+  [...document.querySelectorAll('#wdGrid .wd-row')[row].children].forEach((t, i) =>
+    t.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-14px)' }, { transform: 'translateY(0)' }], { duration: 450, delay: i * 90 }));
+}
+
+// Message temporaire (disparaît seul) ; sticky = message de fin de partie, qui reste
+function wdMsg(txt, sticky) {
+  const el = document.getElementById('wdMsg');
+  if (!el) return;
+  clearTimeout(wdMsgTimer);
+  el.textContent = txt;
+  if (txt && !sticky) wdMsgTimer = setTimeout(() => { el.textContent = ''; }, 2200);
 }
 
 function wdRenderGrid() {
@@ -105,7 +156,7 @@ function wdRenderGrid() {
       const tile = document.createElement('div');
       tile.className = 'wd-tile';
       tile.textContent = wdGuesses[r][c];
-      if (result) {
+      if (result && !wdGuesses[r]._pending) {
         tile.classList.add(result[c]);
       } else if (r === wdCurrentRow) {
         tile.classList.add('active-row');
@@ -159,5 +210,5 @@ GAMES.wordle = {
     document.getElementById('wdReset').addEventListener('click', initWordle);
     document.getElementById('wdLen').addEventListener('change', initWordle);
   },
-  stop() { document.removeEventListener('keydown', wdKeyHandler); }
+  stop() { wdToken++; wdBusy = false; clearTimeout(wdMsgTimer); document.removeEventListener('keydown', wdKeyHandler); }
 };
