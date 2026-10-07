@@ -55,7 +55,7 @@ const WD_WORDS = {
     "songer","sortir","soupir","statue","succes","talent","tarder","temple","tendre","tisser",
     "tomate","tordre","tortue","touffe","tracer","trajet","trefle","trente","tresor","tricot",
     "tulipe","tunnel","urgent","valeur","valise","vapeur","verger","violon","visage","volcan",
-    "voyage","yaourt","zapper"
+    "voyage","yaourt",
   ],
   7: [
     "abeille","aborder","abricot","absurde","accueil","acheter","adapter","admirer","adresse","aimable",

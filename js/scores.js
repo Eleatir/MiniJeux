@@ -25,14 +25,60 @@ function scLoad() {
 }
 function scSave() { try { localStorage.setItem(SC_KEY, JSON.stringify(scData)); } catch (e) {} }
 
+// Normalise une entrée lue du stockage ou d'un fichier importé (jamais de HTML dans le nom)
+function scClean(e) {
+  const n = String((e && e.n) || '').replace(/[^A-Z]/g, '').slice(0, 3) || '???';
+  const d = Number(e && e.d) || 0;
+  return { n, v: Number(e && e.v) || 0, d, id: d + '-' + n };
+}
+
 function scList(g, m) {
   const raw = (scLoad()[g] || {})[m];
   if (!Array.isArray(raw)) return [];
-  return raw.map(e => {
-    const n = String((e && e.n) || '').replace(/[^A-Z]/g, '').slice(0, 3) || '???';
-    const d = Number(e && e.d) || 0;
-    return { n, v: Number(e && e.v) || 0, d, id: d + '-' + n };
-  }).slice(0, SC_MAX);
+  return raw.map(scClean).slice(0, SC_MAX);
+}
+
+// Export / import des scores (fichier JSON), pour les garder ou les déplacer vers un autre navigateur
+function scExport() {
+  const blob = new Blob([JSON.stringify({ app: 'minijeux', version: 1, scores: scLoad() }, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'minijeux-scores.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// Fusionne les scores d'un fichier dans les tableaux actuels ; renvoie le nombre de scores ajoutés
+function scImportData(d) {
+  if (!d || d.app !== 'minijeux' || typeof d.scores !== 'object' || !d.scores) throw new Error('format');
+  let added = 0;
+  SC_ORDER.forEach(g => Object.keys(SC_GAMES[g].modes).forEach(m => {
+    const incoming = (d.scores[g] || {})[m];
+    if (!Array.isArray(incoming)) return;
+    const list = scList(g, m), ids = new Set(list.map(e => e.id));
+    incoming.map(scClean).forEach(e => { if (!ids.has(e.id)) { ids.add(e.id); list.push(e); added++; } });
+    const asc = SC_GAMES[g].dir === 'asc';
+    list.sort((a, b) => (asc ? a.v - b.v : b.v - a.v) || a.d - b.d);
+    scLoad(); (scData[g] = scData[g] || {})[m] = list.slice(0, SC_MAX).map(e => ({ n: e.n, v: e.v, d: e.d }));
+  }));
+  scSave();
+  return added;
+}
+
+function scImportFile() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'application/json,.json';
+  inp.onchange = () => {
+    const f = inp.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try { const n = scImportData(JSON.parse(r.result)); scToast(n + (n > 1 ? ' scores importés' : ' score importé')); }
+      catch (e) { scToast('Fichier de scores invalide'); }
+    };
+    r.readAsText(f);
+  };
+  inp.click();
 }
 function scBest(g, m) { const l = scList(g, m); return l.length ? l[0].v : null; }
 
@@ -69,6 +115,8 @@ function scClose() { if (scUI) { scUI.el.remove(); scUI = null; } }
 function scOpen(handlers) {
   scClose();
   if (document.activeElement) document.activeElement.blur();
+  const g = typeof activeGame !== 'undefined' && activeGame && GAMES[activeGame];
+  if (g && g.pause) g.pause();
   const el = document.createElement('div');
   el.className = 'sc-back';
   el.innerHTML = '<div class="sc-panel" role="dialog" aria-modal="true"></div>';
@@ -114,6 +162,7 @@ function scSubmit(g, m, v, done) {
       id = scAdd(g, m, v, name);
     }
     scClose();
+    if (save && typeof menuRefresh === 'function') menuRefresh();   // les records affichés sur les cartes du menu
     if (done) done();
     if (save) scShow(g, m, id);
   };

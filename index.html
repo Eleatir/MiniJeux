@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mini-jeux</title>
 <link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎮%3C/text%3E%3C/svg%3E">
 </head>
 <body>
 
@@ -12,37 +13,42 @@
 <div id="menu">
   <p class="hub-title">Mini-jeux</p>
   <p class="hub-sub">Tes petits compagnons de pause — clique sur un jeu disponible pour jouer</p>
-  <div class="menu-bar"><button class="btn" onclick="scShow(currentGame)">🏆 Meilleurs scores</button></div>
+  <div class="menu-bar"><button class="btn" onclick="scShow(currentGame)">🏆 Meilleurs scores</button> <button class="btn" onclick="setShow()">⚙ Réglages</button></div>
   <div class="cards-grid">
-    <div class="card ready" role="button" tabindex="0" onclick="startGame('wordle')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('wordle')}">
+    <div class="card ready" data-game="wordle" role="button" tabindex="0" onclick="startGame('wordle')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('wordle')}">
       <span class="card-icon">🟩</span>
       <span class="card-name">Wordle</span>
       <p class="card-desc">Devine le mot en 6 essais</p>
-      <span class="badge ready">✓ disponible</span>
+      <span class="badge ready" data-badge>▶ en cours</span>
+      <p class="card-meta" data-meta></p>
     </div>
-    <div class="card ready" role="button" tabindex="0" onclick="startGame('minesweeper')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('minesweeper')}">
+    <div class="card ready" data-game="minesweeper" role="button" tabindex="0" onclick="startGame('minesweeper')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('minesweeper')}">
       <span class="card-icon">💣</span>
       <span class="card-name">Démineur</span>
       <p class="card-desc">Évite les mines, libère la grille</p>
-      <span class="badge ready">✓ disponible</span>
+      <span class="badge ready" data-badge>▶ en cours</span>
+      <p class="card-meta" data-meta></p>
     </div>
-    <div class="card ready" role="button" tabindex="0" onclick="startGame('snake')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('snake')}">
+    <div class="card ready" data-game="snake" role="button" tabindex="0" onclick="startGame('snake')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('snake')}">
       <span class="card-icon">🐍</span>
       <span class="card-name">Snake</span>
       <p class="card-desc">Mange, grandis, ne te mords pas</p>
-      <span class="badge ready">✓ disponible</span>
+      <span class="badge ready" data-badge>▶ en cours</span>
+      <p class="card-meta" data-meta></p>
     </div>
-    <div class="card ready" role="button" tabindex="0" onclick="startGame('2048')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('2048')}">
+    <div class="card ready" data-game="2048" role="button" tabindex="0" onclick="startGame('2048')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('2048')}">
       <span class="card-icon">🧩</span>
       <span class="card-name">2048</span>
       <p class="card-desc">Fusionne les tuiles, atteins 2048</p>
-      <span class="badge ready">✓ disponible</span>
+      <span class="badge ready" data-badge>▶ en cours</span>
+      <p class="card-meta" data-meta></p>
     </div>
-    <div class="card ready" role="button" tabindex="0" onclick="startGame('solitaire')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('solitaire')}">
+    <div class="card ready" data-game="solitaire" role="button" tabindex="0" onclick="startGame('solitaire')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('solitaire')}">
       <span class="card-icon">🃏</span>
       <span class="card-name">Solitaire</span>
       <p class="card-desc">Le classique indémodable</p>
-      <span class="badge ready">✓ disponible</span>
+      <span class="badge ready" data-badge>▶ en cours</span>
+      <p class="card-meta" data-meta></p>
     </div>
   </div>
 </div>
@@ -50,8 +56,8 @@
 <!-- ══ GAME SHELL ════════════════════════════════════════════════════ -->
 <div id="game-shell">
   <div class="shell-bar">
-    <button class="back-btn" onclick="goMenu()">← Retour au menu</button>
-    <button class="btn" onclick="scShow(currentGame)">🏆 Scores</button>
+    <button class="back-btn" onclick="leaveGame()">← Retour au menu</button>
+    <span class="shell-actions"><button class="btn" onclick="setShow()" aria-label="Réglages">⚙</button><button class="btn" onclick="scShow(currentGame)">🏆 Scores</button></span>
   </div>
   <div id="game-content"></div>
 </div>
@@ -76,7 +82,17 @@
   </div>
   <div class="grid-wrap"><div class="ms-grid" id="msGrid"></div></div>
   <div class="banner" id="msBanner"></div>
-  <p class="hint">Clic gauche = révéler &nbsp;·&nbsp; Clic droit = drapeau</p>
+  <p class="hint">Clic gauche = révéler &nbsp;·&nbsp; Clic droit = drapeau &nbsp;·&nbsp; Clic sur un chiffre entouré d'autant de drapeaux = révèle les voisines (ou clic molette)</p>
+  <details class="rules">
+    <summary>Règles et fonctionnement</summary>
+    <ul>
+      <li><strong>But :</strong> révéler toutes les cases sans mine.</li>
+      <li><strong>Chiffres :</strong> un chiffre indique le nombre de mines dans les 8 cases voisines.</li>
+      <li><strong>Clic gauche :</strong> révèle une case (la première est toujours sûre). <strong>Clic droit :</strong> pose ou retire un drapeau, dans la limite du nombre de mines.</li>
+      <li><strong>Chording :</strong> clique un chiffre déjà entouré d'autant de drapeaux (ou clic molette) pour révéler d'un coup les cases voisines non marquées. Attention : un drapeau mal placé déclenche une mine.</li>
+      <li><strong>Score :</strong> temps de la victoire, par difficulté.</li>
+    </ul>
+  </details>
 </template>
 
 
@@ -104,7 +120,17 @@
       <small>Flèches ou ZQSD pour démarrer</small>
     </div>
   </div>
-  <p class="hint" style="margin-top:8px;">Flèches directionnelles ou Z Q S D &nbsp;·&nbsp; Le serpent traverse les murs</p>
+  <p class="hint" style="margin-top:8px;">Flèches directionnelles ou Z Q S D &nbsp;·&nbsp; Espace = pause &nbsp;·&nbsp; Le serpent traverse les murs</p>
+  <details class="rules">
+    <summary>Règles et fonctionnement</summary>
+    <ul>
+      <li><strong>But :</strong> manger le plus de pommes possible sans te mordre la queue.</li>
+      <li><strong>Commandes :</strong> flèches ou Z Q S D pour tourner (la première touche lance la partie). Espace ou P met en pause ; la pause est automatique si tu quittes la fenêtre.</li>
+      <li><strong>Murs :</strong> le serpent les traverse et réapparaît de l'autre côté.</li>
+      <li><strong>Niveaux :</strong> facile, moyen ou difficile = vitesse du serpent, avec un tableau de scores par niveau.</li>
+      <li><strong>Fin :</strong> la partie s'arrête quand la tête touche le corps.</li>
+    </ul>
+  </details>
 </template>
 
 <!-- ══ TEMPLATE 2048 ═════════════════════════════════════════════════ -->
@@ -116,13 +142,13 @@
     </div>
   </div>
   <div class="ms-stats">
-    <span>Score : <strong id="tfScore">0</strong></span>
+    <span class="tf-score">Score : <strong id="tfScore">0</strong><span class="tf-gain" id="tfGain" aria-hidden="true"></span></span>
     <span>Meilleur : <strong id="tfBest">0</strong></span>
   </div>
-  <div class="tf-board" id="tfBoard"></div>
+  <div class="tf-wrap"><div class="tf-board" id="tfBoard"></div></div>
   <div class="banner" id="tfBanner"></div>
   <p class="hint">Flèches ou Z Q S D &nbsp;·&nbsp; Deux tuiles identiques fusionnent</p>
-  <details class="rules" open>
+  <details class="rules">
     <summary>Règles et fonctionnement</summary>
     <ul>
       <li><strong>But :</strong> faire apparaître une tuile <strong>2048</strong> en fusionnant des tuiles.</li>
@@ -152,10 +178,22 @@
   </div>
   <div class="ms-stats">
     <span>Coups : <strong id="solMoves">0</strong></span>
+    <span>Temps : <strong id="solTime">0:00</strong></span>
   </div>
   <div class="sol-board" id="solBoard"></div>
   <div class="banner" id="solBanner"></div>
-  <p class="hint">Glisse-dépose une carte (ou clique-la puis sa destination) &nbsp;·&nbsp; Double-clic = fondation ou unique destination possible &nbsp;·&nbsp; Fin de donne automatique &nbsp;·&nbsp; Roi sur colonne vide</p>
+  <p class="hint">Glisse-dépose une carte (ou clique-la puis sa destination) &nbsp;·&nbsp; Double-clic = fondation ou unique destination possible &nbsp;·&nbsp; Ctrl+Z = annuler &nbsp;·&nbsp; N = nouvelle donne &nbsp;·&nbsp; Fin de donne automatique &nbsp;·&nbsp; Roi sur colonne vide</p>
+  <details class="rules">
+    <summary>Règles et fonctionnement</summary>
+    <ul>
+      <li><strong>But :</strong> ranger les 52 cartes sur les 4 fondations, de l'as au roi, par couleur.</li>
+      <li><strong>Colonnes :</strong> on empile en ordre décroissant en alternant rouge et noir (dame noire sur roi rouge). Seul un roi peut aller sur une colonne vide.</li>
+      <li><strong>Pioche :</strong> clique-la pour retourner 1 ou 3 cartes ; quand elle est vide, clique pour la remélanger.</li>
+      <li><strong>Déplacer :</strong> glisse-dépose une carte (ou une suite), ou clique-la puis sa destination. Double-clic : vers une fondation, sinon vers la seule destination possible.</li>
+      <li><strong>Aides :</strong> Ctrl+Z annule, N lance une nouvelle donne. Quand toutes les cartes sont visibles et que la fin est assurée, elle se termine automatiquement.</li>
+      <li><strong>Score :</strong> nombre de coups de la victoire, par mode de pioche.</li>
+    </ul>
+  </details>
 </template>
 
 <!-- ══ TEMPLATE WORDLE ═══════════════════════════════════════════════ -->
@@ -174,15 +212,30 @@
   <div class="wd-msg" id="wdMsg" aria-live="polite"></div>
   <div class="wd-grid" id="wdGrid"></div>
   <div class="wd-keyboard" id="wdKeyboard"></div>
+  <details class="rules">
+    <summary>Règles et fonctionnement</summary>
+    <ul>
+      <li><strong>But :</strong> trouver le mot caché en 6 essais. Choisis sa longueur (5, 6 ou 7 lettres) en haut.</li>
+      <li><strong>Saisie :</strong> tape au clavier (ou clique le clavier à l'écran), Entrée valide, Retour arrière efface. Le mot doit exister dans le dictionnaire.</li>
+      <li><strong>Couleurs :</strong> vert = bonne lettre bien placée, ambre = lettre présente mais mal placée, gris = lettre absente. Avec le contraste élevé (⚙) : orange et bleu, avec un symbole ● ou ◐.</li>
+      <li><strong>Accents :</strong> ils sont ignorés, tape simplement les lettres.</li>
+      <li><strong>Score :</strong> moins d'essais, puis temps le plus court. Seules les victoires sont enregistrées.</li>
+    </ul>
+  </details>
 </template>
 
 <script src="js/scores.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/storage.js"></script>
 <script src="js/core.js"></script>
 <script src="js/games/minesweeper.js"></script>
 <script src="js/games/wordle-words.js"></script>
+<script src="js/games/wordle-dict.js"></script>
 <script src="js/games/wordle.js"></script>
 <script src="js/games/snake.js"></script>
 <script src="js/games/2048.js"></script>
 <script src="js/games/solitaire.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

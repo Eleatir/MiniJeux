@@ -5,10 +5,11 @@ const SOL_SUITS = ['♠', '♥', '♦', '♣'];
 const SOL_RANKS = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const SOL_UP = 5.4, SOL_DOWN = 2.2;   // décalages en cqw
 let sol, solSel = null, solHist = [], solLast = { k: '', t: 0 };
+let solElapsed = 0, solClock = null, solFlight = null;
 
 const solRed = c => c.s === 1 || c.s === 2;
 
-function initSolitaire() {
+function initSolitaire(saved) {
   solStop();
   const deck = [];
   for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) deck.push({ s, r, up: false });
@@ -16,7 +17,8 @@ function initSolitaire() {
     const j = Math.floor(Math.random() * (i + 1));
     [deck[i], deck[j]] = [deck[j], deck[i]];
   }
-  sol = { stock: [], waste: [], found: [[], [], [], []], tab: [], moves: 0, won: false };
+  sol = { stock: [], waste: [], found: [[], [], [], []], tab: [], moves: 0, won: false,
+          draw: parseInt(document.getElementById('solDraw').value) };   // mode de pioche figé pour toute la donne
   for (let i = 0; i < 7; i++) {
     const col = deck.splice(0, i + 1);
     col[col.length - 1].up = true;
@@ -24,18 +26,42 @@ function initSolitaire() {
   }
   sol.stock = deck;
   solSel = null; solHist = []; solLast = { k: '', t: 0 }; solAuto = false;
+  solElapsed = 0;
+  if (saved) {   // reprise : donne, annulations possibles et chrono
+    sol = saved.sol; solHist = saved.hist || []; solElapsed = saved.elapsed || 0;
+    document.getElementById('solDraw').value = sol.draw;
+    if (sol.moves > 0) solClockStart();
+  }
+  solShowTime();
   const b = document.getElementById('solBanner');
   b.className = 'banner'; b.textContent = '';
   const board = document.getElementById('solBoard');
   board.onclick = solClick;
   board.onpointerdown = solPointerDown;
-  document.getElementById('solReset').onclick = () => { document.activeElement.blur(); initSolitaire(); };
-  document.getElementById('solDraw').onchange = () => { document.activeElement.blur(); initSolitaire(); };
+  document.getElementById('solReset').onclick = () => { document.activeElement.blur(); confirmAbandon(() => initSolitaire(), 'Nouvelle donne'); };
+  document.getElementById('solDraw').onchange = () => {
+    const sel = document.getElementById('solDraw');
+    sel.blur(); confirmChange(sel, String(sol.draw), () => initSolitaire(), 'Nouvelle donne');
+  };
   document.getElementById('solUndo').onclick = () => { document.activeElement.blur(); solUndo(); };
   solRender();
+  if (saved) solMaybeAuto();   // une complétion automatique interrompue reprend
 }
 
+// Chrono : démarre au premier coup, s'arrête à la victoire
+function solShowTime() {
+  const el = document.getElementById('solTime');
+  if (el) el.textContent = Math.floor(solElapsed / 60) + ':' + String(solElapsed % 60).padStart(2, '0');
+}
+function solClockStart() {
+  if (solClock || sol.won) return;
+  solClock = setInterval(() => { if (!document.hidden) { solElapsed++; solShowTime(); } }, 1000);
+}
+function solClockStop() { clearInterval(solClock); solClock = null; }
+
 function solPush() {
+  if (!sol.counted) { sol.counted = true; Stats.played('solitaire', String(sol.draw)); }
+  solClockStart();
   solHist.push(JSON.stringify(sol));
   if (solHist.length > 300) solHist.shift();
 }
@@ -52,7 +78,8 @@ function solArr(z, i) { return z === 'w' ? sol.waste : z === 't' ? sol.tab[i] : 
 
 function solStock() {
   solPush();
-  const n = parseInt(document.getElementById('solDraw').value);
+  const n = sol.draw;
+  Sfx.play('flip');
   if (sol.stock.length) {
     for (let k = 0; k < n && sol.stock.length; k++) {
       const c = sol.stock.pop(); c.up = true; sol.waste.push(c);
@@ -84,6 +111,7 @@ function solCanMove(sel, to, j) {
 function solDoMove(sel, to, j) {
   solPush();
   solMoveCore(sel, to, j);
+  Sfx.play(to === 'f' ? 'good' : 'place');
 }
 
 function solMoveCore(sel, to, j) {
@@ -123,12 +151,21 @@ function solAutoMove(z, i, idx) {
 /* ── complétion automatique ── */
 let solAuto = false, solTimer = null;
 
-function solAutoStep() {
+// fly : mémorise la position de la carte avant son départ pour l'animer vers la fondation
+function solAutoStep(fly) {
   const srcs = [['w', 0]].concat(sol.tab.map((_, i) => ['t', i]));
   for (const [z, i] of srcs) {
     if (!solArr(z, i).length) continue;
     const sel = { from: z, i, n: 1 };
-    for (let j = 0; j < 4; j++) if (solCanMove(sel, 'f', j)) { solMoveCore(sel, 'f', j); return 'found'; }
+    for (let j = 0; j < 4; j++) if (solCanMove(sel, 'f', j)) {
+      if (fly && motionOK()) {
+        const slot = document.querySelector('.sol-slot[data-zone="' + z + '"][data-i="' + i + '"]');
+        const el = slot && slot.lastElementChild;
+        if (el) solFlight = { rect: el.getBoundingClientRect(), j };
+      }
+      solMoveCore(sel, 'f', j);
+      return 'found';
+    }
   }
   if (sol.stock.length) { const c = sol.stock.pop(); c.up = true; sol.waste.push(c); return 'draw'; }
   if (sol.waste.length) { sol.stock = sol.waste.reverse(); sol.waste = []; sol.stock.forEach(c => c.up = false); return 'draw'; }
@@ -161,16 +198,55 @@ function solMaybeAuto() {
   b.className = 'banner win'; b.textContent = 'Complétion automatique…';
   solTimer = setInterval(() => {
     const board = document.getElementById('solBoard');
-    const r = !board || sol.won ? false : solAutoStep();
-    if (r === 'found') { sol.moves++; if (sol.found.every(p => p.length === 13)) sol.won = true; }
-    if (board) solRender();
+    const r = !board || sol.won ? false : solAutoStep(true);
+    if (r === 'found') { sol.moves++; Sfx.play('good'); if (sol.found.every(p => p.length === 13)) sol.won = true; }
+    if (board) { solRender(); solRunFlight(); }
     if (!r || sol.won) { clearInterval(solTimer); solAuto = false; if (board && !sol.won) b.className = 'banner'; }
-  }, 70);
+  }, motionOK() ? 110 : 40);
 }
 
-// Arrête tout ce qui tourne en arrière-plan (complétion auto, glisser en cours)
+// La carte part de sa position d'origine et glisse jusqu'à la fondation (technique FLIP)
+function solRunFlight() {
+  const f = solFlight; solFlight = null;
+  if (!f) return;
+  const slot = document.querySelector('.sol-slot[data-zone="f"][data-i="' + f.j + '"]');
+  const el = slot && slot.lastElementChild;
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  el.style.zIndex = 30;
+  el.animate([{ transform: 'translate(' + (f.rect.left - r.left) + 'px, ' + (f.rect.top - r.top) + 'px)' }, { transform: 'translate(0, 0)' }],
+             { duration: 240, easing: 'ease-in' }).onfinish = () => { el.style.zIndex = ''; };
+}
+
+// Y a-t-il encore un coup « utile » : carte vers une fondation, carte de la pioche/défausse jouable,
+// ou déplacement qui dévoile une carte cachée ou vide une colonne ? (heuristique prudente : toute la pioche est supposée accessible)
+function solHasUsefulMove() {
+  const canFound = c => sol.found.some(p => { const t = p[p.length - 1]; return t ? t.s === c.s && c.r === t.r + 1 : c.r === 1; });
+  const canTab = c => sol.tab.some(col => { const t = col[col.length - 1]; return t ? t.up && solRed(t) !== solRed(c) && t.r === c.r + 1 : c.r === 13; });
+  if (sol.stock.concat(sol.waste).some(c => canFound(c) || canTab(c))) return true;
+  for (let i = 0; i < 7; i++) {
+    const col = sol.tab[i];
+    if (!col.length) continue;
+    if (col[col.length - 1].up && canFound(col[col.length - 1])) return true;
+    for (let idx = 0; idx < col.length; idx++) {
+      const card = col[idx];
+      if (!card.up) continue;
+      const reveals = idx === 0 || !col[idx - 1].up;
+      for (let j = 0; j < 7; j++) {
+        if (j === i) continue;
+        const dest = sol.tab[j], t = dest[dest.length - 1];
+        if (t && t.up && solRed(t) !== solRed(card) && t.r === card.r + 1 && reveals) return true;
+        if (!t && card.r === 13 && idx > 0 && !col[idx - 1].up) return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Arrête tout ce qui tourne en arrière-plan (complétion auto, glisser en cours, chrono)
 function solStop() {
   clearInterval(solTimer); solTimer = null; solAuto = false;
+  solClockStop();
   document.removeEventListener('pointermove', solPointerMove);
   document.removeEventListener('pointerup', solPointerUp);
   document.removeEventListener('pointercancel', solPointerUp);
@@ -327,7 +403,7 @@ function solRender() {
 
   // défausse (jusqu'à 3 cartes visibles en éventail)
   const waste = solSlot('w', 0);
-  const n = parseInt(document.getElementById('solDraw').value);
+  const n = sol.draw;
   const shown = sol.waste.slice(-(n === 3 ? 3 : 1));
   shown.forEach((c, k) => {
     const isTop = k === shown.length - 1;
@@ -367,20 +443,45 @@ function solRender() {
   board.appendChild(tab);
 
   document.getElementById('solMoves').textContent = sol.moves;
+  solShowTime();
   document.getElementById('solUndo').disabled = !solHist.length;
+  const b = document.getElementById('solBanner');
   if (sol.won) {
-    const b = document.getElementById('solBanner');
+    solClockStop();
+    b.dataset.stuck = '';
     b.className = 'banner win';
-    b.textContent = 'Bravo, tu as gagné en ' + sol.moves + ' coups !';
+    b.textContent = 'Bravo, tu as gagné en ' + sol.moves + ' coups et ' + document.getElementById('solTime').textContent + ' !';
     if (!sol.scored) {
       sol.scored = true;
-      scSubmit('solitaire', document.getElementById('solDraw').value, sol.moves);
+      Fx.confetti(); Sfx.play('win');
+      scSubmit('solitaire', String(sol.draw), sol.moves);
+    }
+  } else if (!solAuto) {
+    if (!solHasUsefulMove()) {
+      b.dataset.stuck = '1';
+      b.className = 'banner lose';
+      b.textContent = 'Plus de coup utile : annule un coup ou lance une nouvelle donne.';
+    } else if (b.dataset.stuck) {
+      b.dataset.stuck = ''; b.className = 'banner'; b.textContent = '';
     }
   }
 }
 
 
+// Raccourcis : Ctrl+Z annuler, N nouvelle donne
+function solKeyHandler(e) {
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'z') { e.preventDefault(); if (!solAuto) solUndo(); return; }
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'n' || e.key === 'N') { e.preventDefault(); confirmAbandon(() => initSolitaire(), 'Nouvelle donne'); }
+}
+
 GAMES.solitaire = {
-  start() { initSolitaire(); },
-  stop()  { solStop(); }
+  wide: true,   // cartes plus grandes sur grand écran
+  start(saved) { document.addEventListener('keydown', solKeyHandler); initSolitaire(saved); },
+  stop()  { solStop(); document.removeEventListener('keydown', solKeyHandler); },
+  inProgress() { return !!sol && sol.moves > 0 && !sol.won; },
+  save() {
+    if (!GAMES.solitaire.inProgress()) return null;
+    return { sol, hist: solHist.slice(-40), elapsed: solElapsed };
+  }
 };
