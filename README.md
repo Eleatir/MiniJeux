@@ -14,6 +14,23 @@ Cinq petits jeux jouables dans le navigateur, sans installation ni dépendance :
 
 Ouvrir `index.html` dans un navigateur (ou servir le dossier avec n'importe quel serveur statique, par exemple GitHub Pages).
 
+## Tests
+
+```sh
+npm install                       # une seule fois (installe Playwright)
+npx playwright install chromium   # une seule fois (télécharge le navigateur de test)
+
+npm run test:unit                 # logique pure, instantané, sans navigateur
+npm run test:e2e                  # un vrai Chromium joue aux cinq jeux
+npm test                          # les deux
+```
+
+- `tests/unit/` : tests Node (`node --test`, sans aucune dépendance). Les scripts du jeu sont chargés dans un contexte isolé avec un faux navigateur (`helpers.js`) : règles du 2048, du Démineur et du Solitaire, calcul des couleurs du Wordle, intégrité des listes de mots et du dictionnaire, scores, import/export, sauvegardes.
+- `tests/e2e/` : tests Playwright qui jouent réellement dans Chromium (clavier, souris, glisser-déposer, reprise de partie, scores, réglages). Chaque test part d'un navigateur vierge et échoue à la moindre erreur dans la console.
+- `PW_CHROMIUM_PATH=/chemin/vers/chrome npm run test:e2e` pour utiliser un Chromium déjà installé.
+- `npm start` sert le jeu sur http://localhost:4173.
+- La CI (`.github/workflows/tests.yml`) lance les deux séries à chaque pull request et à chaque push sur `main`.
+
 ## Structure
 
 ```
@@ -28,6 +45,10 @@ js/app.js             démarrage (menu, message d'accueil)
 js/games/             un fichier par jeu
   wordle-words.js     mots à deviner (liste choisie)
   wordle-dict.js      dictionnaire de validation des essais
+tests/unit/           tests de la logique (Node)
+tests/e2e/            tests de bout en bout (Playwright)
+tests/serve.js        serveur statique sans dépendance (npm start et tests)
+.github/workflows/    intégration continue
 ```
 
 ## Ajouter un jeu
