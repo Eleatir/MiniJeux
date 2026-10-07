@@ -9,7 +9,7 @@ let solElapsed = 0, solClock = null, solFlight = null;
 
 const solRed = c => c.s === 1 || c.s === 2;
 
-function initSolitaire() {
+function initSolitaire(saved) {
   solStop();
   const deck = [];
   for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) deck.push({ s, r, up: false });
@@ -26,21 +26,26 @@ function initSolitaire() {
   }
   sol.stock = deck;
   solSel = null; solHist = []; solLast = { k: '', t: 0 }; solAuto = false;
-  solElapsed = 0; solShowTime();
+  solElapsed = 0;
+  if (saved) {   // reprise : donne, annulations possibles et chrono
+    sol = saved.sol; solHist = saved.hist || []; solElapsed = saved.elapsed || 0;
+    document.getElementById('solDraw').value = sol.draw;
+    if (sol.moves > 0) solClockStart();
+  }
+  solShowTime();
   const b = document.getElementById('solBanner');
   b.className = 'banner'; b.textContent = '';
   const board = document.getElementById('solBoard');
   board.onclick = solClick;
   board.onpointerdown = solPointerDown;
-  document.getElementById('solReset').onclick = () => { document.activeElement.blur(); confirmAbandon(initSolitaire, 'Nouvelle donne'); };
+  document.getElementById('solReset').onclick = () => { document.activeElement.blur(); confirmAbandon(() => initSolitaire(), 'Nouvelle donne'); };
   document.getElementById('solDraw').onchange = () => {
-    document.activeElement.blur();
     const sel = document.getElementById('solDraw');
-    confirmAbandon(initSolitaire, 'Nouvelle donne');
-    if (sol.moves > 0 && !sol.won) sel.value = sol.draw;   // si on annule, le menu reprend la valeur de la donne en cours
+    sel.blur(); confirmChange(sel, String(sol.draw), () => initSolitaire(), 'Nouvelle donne');
   };
   document.getElementById('solUndo').onclick = () => { document.activeElement.blur(); solUndo(); };
   solRender();
+  if (saved) solMaybeAuto();   // une complétion automatique interrompue reprend
 }
 
 // Chrono : démarre au premier coup, s'arrête à la victoire
@@ -55,6 +60,7 @@ function solClockStart() {
 function solClockStop() { clearInterval(solClock); solClock = null; }
 
 function solPush() {
+  if (!sol.counted) { sol.counted = true; Stats.played('solitaire', String(sol.draw)); }
   solClockStart();
   solHist.push(JSON.stringify(sol));
   if (solHist.length > 300) solHist.shift();
@@ -466,12 +472,16 @@ function solRender() {
 function solKeyHandler(e) {
   if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'z') { e.preventDefault(); if (!solAuto) solUndo(); return; }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
-  if (e.key === 'n' || e.key === 'N') { e.preventDefault(); confirmAbandon(initSolitaire, 'Nouvelle donne'); }
+  if (e.key === 'n' || e.key === 'N') { e.preventDefault(); confirmAbandon(() => initSolitaire(), 'Nouvelle donne'); }
 }
 
 GAMES.solitaire = {
   wide: true,   // cartes plus grandes sur grand écran
-  start() { document.addEventListener('keydown', solKeyHandler); initSolitaire(); },
+  start(saved) { document.addEventListener('keydown', solKeyHandler); initSolitaire(saved); },
   stop()  { solStop(); document.removeEventListener('keydown', solKeyHandler); },
-  inProgress() { return !!sol && sol.moves > 0 && !sol.won; }
+  inProgress() { return !!sol && sol.moves > 0 && !sol.won; },
+  save() {
+    if (!GAMES.solitaire.inProgress()) return null;
+    return { sol, hist: solHist.slice(-40), elapsed: solElapsed };
+  }
 };

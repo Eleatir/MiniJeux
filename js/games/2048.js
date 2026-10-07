@@ -2,7 +2,7 @@
    2048
 ════════════════════════════════════════════ */
 const TF_N = 4;
-let tfBoard, tfScore, tfBest = 0, tfOver, tfPaused, tfKeep, tfNew = -1;
+let tfBoard, tfScore, tfBest = 0, tfOver, tfPaused, tfKeep, tfNew = -1, tfCounted = false;
 
 function tfKeyHandler(e) {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -16,14 +16,15 @@ function tfKeyHandler(e) {
   tfMove(dir);
 }
 
-function initTf() {
+function initTf(saved) {
   tfBoard = Array.from({ length: TF_N }, () => Array(TF_N).fill(0));
   tfBest = scBest('2048', 'all') || 0;
-  tfScore = 0; tfOver = false; tfPaused = false; tfKeep = false; tfNew = -1;
-  tfAdd(); tfAdd();
+  tfScore = 0; tfOver = false; tfPaused = false; tfKeep = false; tfNew = -1; tfCounted = false;
+  if (saved) { tfBoard = saved.board; tfScore = saved.score; tfKeep = saved.keep; tfCounted = true; if (tfScore > tfBest) tfBest = tfScore; }
+  else { tfAdd(); tfAdd(); }
   const b = document.getElementById('tfBanner');
   b.className = 'banner'; b.textContent = '';
-  document.getElementById('tfReset').onclick = () => { document.activeElement.blur(); initTf(); };
+  document.getElementById('tfReset').onclick = () => { document.activeElement.blur(); confirmAbandon(() => initTf(), 'Nouvelle partie'); };
   tfRender();
 }
 
@@ -75,6 +76,7 @@ function tfMove(dir) {
     res.moves.forEach(m => anim.moves.push({ from: coords[m.from], to: coords[m.to], v: m.v }));
   }
   if (!moved) return;
+  if (!tfCounted) { tfCounted = true; Stats.played('2048', 'all'); }
   tfScore += gain;
   if (tfScore > tfBest) tfBest = tfScore;
   tfAdd();
@@ -86,7 +88,7 @@ function tfMove(dir) {
     banner.className = 'banner win';
     banner.innerHTML = 'Bravo, tu as atteint 2048 ! <button class="btn" id="tfContinue">Continuer</button><button class="btn" id="tfSave">Enregistrer mon score</button>';
     document.getElementById('tfSave').onclick = () => { document.activeElement.blur(); scSubmit('2048', 'all', tfScore); };
-    Sfx.play('win');
+    Sfx.play('win'); Fx.confetti();
     document.getElementById('tfContinue').onclick = () => {
       tfKeep = true; tfPaused = false; banner.className = 'banner'; banner.textContent = '';
       document.activeElement.blur();
@@ -169,6 +171,11 @@ function tfShowGain(n) {
 
 
 GAMES['2048'] = {
-  start() { document.addEventListener('keydown', tfKeyHandler); initTf(); },
-  stop()  { document.removeEventListener('keydown', tfKeyHandler); }
+  start(saved) { document.addEventListener('keydown', tfKeyHandler); initTf(saved); },
+  stop()  { document.removeEventListener('keydown', tfKeyHandler); },
+  inProgress() { return !tfOver && tfScore > 0; },
+  save() {
+    if (!GAMES['2048'].inProgress()) return null;
+    return { board: tfBoard, score: tfScore, keep: tfKeep || tfBoard.flat().includes(2048) };   // 2048 déjà atteint : on reprend en mode « continuer »
+  }
 };

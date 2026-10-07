@@ -85,6 +85,7 @@ function setShow() {
         '<span><strong>' + SET_LABELS[k][0] + '</strong><small>' + SET_LABELS[k][1] + '</small></span>' +
         '<span class="set-sw' + (Settings.get(k) ? ' on' : '') + '">' + (Settings.get(k) ? 'OUI' : 'NON') + '</span></button>').join('') +
       '</div><p class="sc-hint">↑ ↓ choisir · Espace pour changer · Échap pour fermer</p>' +
+      '<div class="sc-actions"><button class="btn" data-a="export">⬇ Exporter mes scores</button><button class="btn" data-a="import">⬆ Importer</button></div>' +
       '<div class="sc-actions"><button class="btn sc-ok" data-a="close">Fermer</button></div>';
   };
   const toggle = k => { Settings.set(k, !Settings.get(k)); if (k === 'sound') Sfx.play('good'); render(); };
@@ -101,6 +102,8 @@ function setShow() {
     const b = e.target.closest('button');
     if (!b) return;
     if (b.dataset.a === 'close') { scClose(); return; }
+    if (b.dataset.a === 'export') { scExport(); return; }
+    if (b.dataset.a === 'import') { scImportFile(); return; }
     if (b.dataset.k) { sel = keys.indexOf(b.dataset.k); toggle(b.dataset.k); }
   });
   render();

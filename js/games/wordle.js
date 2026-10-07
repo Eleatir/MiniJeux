@@ -23,14 +23,21 @@ function wdKeyHandler(e) {
   if (/^[A-Z]$/.test(l)) wdType(l);
 }
 
-function initWordle() {
+function initWordle(saved) {
+  if (saved) document.getElementById('wdLen').value = saved.len;
   wdLen        = parseInt(document.getElementById('wdLen').value);
   const pool   = WD_WORDS[wdLen];
-  wdTarget     = pool[Math.floor(Math.random() * pool.length)].toUpperCase();
+  wdTarget     = saved ? saved.target : pool[Math.floor(Math.random() * pool.length)].toUpperCase();
   wdNormTarget = normalize(wdTarget);
   wdGuesses    = Array(WD_ROWS).fill(null).map(() => Array(wdLen).fill(''));
   wdCurrentRow = 0; wdCurrentCol = 0; wdOver = false; wdKeyColors = {}; wdStart = null;
   wdBusy = false; wdToken++;
+  if (saved) {   // reprise : lignes jouées, position, couleurs du clavier, temps écoulé
+    wdGuesses = saved.guesses;
+    saved.results.forEach((r, i) => { if (r) wdGuesses[i]._result = r; });
+    wdCurrentRow = saved.row; wdCurrentCol = saved.col; wdKeyColors = saved.keys;
+    wdStart = Date.now() - saved.elapsed;
+  }
   wdMsg('');
   if (document.activeElement) document.activeElement.blur();
   wdRenderGrid(); wdRenderKeyboard();
@@ -38,7 +45,7 @@ function initWordle() {
 
 function wdType(letter) {
   if (wdOver || wdBusy || wdCurrentCol >= wdLen) return;
-  if (!wdStart) wdStart = Date.now();
+  if (!wdStart) { wdStart = Date.now(); Stats.played('wordle', String(wdLen)); }
   wdGuesses[wdCurrentRow][wdCurrentCol] = letter;
   wdCurrentCol++;
   wdRenderGrid();
@@ -91,7 +98,7 @@ function wdSubmit() {
     if (normGuess === wdNormTarget) {
       wdOver = true;
       wdMsg('Bravo ! Le mot était ' + wdTarget + ' 🎉', true);
-      wdCelebrate(row);
+      wdCelebrate(row); Fx.confetti();
       Sfx.play('win');
       scSubmit('wordle', String(wdLen), (row + 1) * 1000 + Math.min(999, Math.round((Date.now() - wdStart) / 1000)));
       return;
@@ -204,11 +211,25 @@ function wdRenderKeyboard() {
 
 
 GAMES.wordle = {
-  start() {
+  start(saved) {
     document.addEventListener('keydown', wdKeyHandler);
-    initWordle();
-    document.getElementById('wdReset').addEventListener('click', initWordle);
-    document.getElementById('wdLen').addEventListener('change', initWordle);
+    initWordle(saved);
+    document.getElementById('wdReset').addEventListener('click', () => {
+      document.activeElement.blur();
+      confirmAbandon(() => initWordle(), 'Nouveau mot');
+    });
+    const sel = document.getElementById('wdLen');
+    sel.addEventListener('change', () => { sel.blur(); confirmChange(sel, String(wdLen), () => initWordle(), 'Nouveau mot'); });
+  },
+  inProgress() { return !wdOver && (wdCurrentRow > 0 || wdCurrentCol > 0); },
+  save() {
+    if (!GAMES.wordle.inProgress()) return null;
+    return {
+      len: wdLen, target: wdTarget, row: wdCurrentRow, col: wdCurrentCol, keys: wdKeyColors,
+      guesses: wdGuesses.map(r => r.slice()),
+      results: wdGuesses.map(r => (r._pending ? null : r._result || null)),   // une ligne en cours de révélation est reprise non validée
+      elapsed: wdStart ? Date.now() - wdStart : 0
+    };
   },
   stop() { wdToken++; wdBusy = false; clearTimeout(wdMsgTimer); document.removeEventListener('keydown', wdKeyHandler); }
 };

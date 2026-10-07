@@ -9,8 +9,12 @@ const MS_CONFIGS = {
 let msCfg, msBoard, msRevealed, msFlagged, msMines,
     msOver, msStarted, msTimer, msElapsed, msStart, msLost;
 
-function initMinesweeper() {
-  msCfg      = MS_CONFIGS[document.getElementById('diff').value];
+let msDiffKey = 'medium';
+
+function initMinesweeper(saved) {
+  if (saved) document.getElementById('diff').value = saved.diff;
+  msDiffKey  = document.getElementById('diff').value;
+  msCfg      = MS_CONFIGS[msDiffKey];
   msBoard    = Array(msCfg.rows).fill(null).map(() => Array(msCfg.cols).fill(0));
   msRevealed = Array(msCfg.rows).fill(null).map(() => Array(msCfg.cols).fill(false));
   msFlagged  = Array(msCfg.rows).fill(null).map(() => Array(msCfg.cols).fill(false));
@@ -21,8 +25,18 @@ function initMinesweeper() {
   document.getElementById('mineCount').textContent = msCfg.mines;
   document.getElementById('msBanner').className    = 'banner';
   document.getElementById('msBanner').textContent  = '';
-  document.getElementById('resetBtn').onclick      = initMinesweeper;
-  document.getElementById('diff').onchange         = initMinesweeper;
+  document.getElementById('resetBtn').onclick      = () => { document.activeElement.blur(); confirmAbandon(() => initMinesweeper(), 'Rejouer'); };
+  document.getElementById('diff').onchange         = () => {
+    const sel = document.getElementById('diff');
+    sel.blur(); confirmChange(sel, msDiffKey, () => initMinesweeper(), 'Rejouer');
+  };
+  if (saved) {   // reprise d'une partie en cours
+    msMines = new Set(saved.mines); msBoard = saved.board; msRevealed = saved.revealed; msFlagged = saved.flagged;
+    msStarted = true; msStart = Date.now() - saved.elapsed; msElapsed = Math.floor(saved.elapsed / 1000);
+    document.getElementById('timer').textContent = msElapsed + 's';
+    msTimer = setInterval(() => { msElapsed++; document.getElementById('timer').textContent = msElapsed + 's'; }, 1000);
+    msUpdateCount();
+  }
   msShowBest();
   msRender();
 }
@@ -88,7 +102,7 @@ function msClick(r, c) {
   if (msRevealed[r][c]) { msChord(r,c); return; }
   if (msFlagged[r][c]) return;
   if (!msStarted) {
-    msPlaceMines(r,c); msStarted=true; msStart=Date.now();
+    msPlaceMines(r,c); msStarted=true; msStart=Date.now(); Stats.played('minesweeper', msDiffKey);
     msTimer=setInterval(()=>{
       msElapsed++;
       document.getElementById('timer').textContent=msElapsed+'s';
@@ -120,6 +134,7 @@ function msEnd(win, hitR, hitC) {
   msUpdateCount();
   msRender();
   Sfx.play(win ? 'win' : 'boom');
+  if (win) Fx.confetti();
   if (!win && hitR!==undefined) {
     const el=document.querySelector(`[data-r="${hitR}"][data-c="${hitC}"]`);
     if (el) el.classList.add('mine-hit');
@@ -174,6 +189,11 @@ function msRender() {
 
 GAMES.minesweeper = {
   wide: true,   // la grille « Difficile » (30 colonnes) dépasse la largeur standard
-  start() { initMinesweeper(); },
-  stop()  { clearInterval(msTimer); }
+  start(saved) { initMinesweeper(saved); },
+  stop()  { clearInterval(msTimer); },
+  inProgress() { return msStarted && !msOver; },
+  save() {
+    if (!GAMES.minesweeper.inProgress()) return null;
+    return { diff: msDiffKey, mines: [...msMines], board: msBoard, revealed: msRevealed, flagged: msFlagged, elapsed: Date.now() - msStart };
+  }
 };

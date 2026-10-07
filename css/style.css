@@ -248,7 +248,7 @@
   .tf-big  { background:#3c3a32; color:#fff; font-size: 5cqw; }
   .banner .btn { margin-left: 10px; }
   .rules {
-    margin-top: 1rem; max-width: 400px; padding: 10px 14px;
+    margin-top: 1rem; max-width: 720px; padding: 10px 14px;
     background: var(--surface); border: 0.5px solid var(--border);
     border-radius: var(--radius); font-size: 13px; color: var(--text2); line-height: 1.55;
   }
@@ -358,3 +358,9 @@
   .cell.wrong-flag { background: var(--red-bg); }
   .fx-confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 900; }
   .fx-piece { position: absolute; top: 0; border-radius: 2px; }
+  .shell-actions { display: flex; gap: 8px; }
+  .card-meta { font-size: 12px; color: var(--text3); margin-top: auto; }
+  .card .badge[data-badge] { top: 10px; right: 10px; }
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .card:focus-visible { outline-offset: 0; border-color: var(--blue); }
+  .sol-card:focus-visible, .wd-key:focus-visible { outline-offset: -2px; }

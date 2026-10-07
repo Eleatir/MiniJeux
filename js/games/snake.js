@@ -48,7 +48,7 @@ function snInput(dir) {
     // Au départ le corps est à gauche de la tête : on ignore ← (mort immédiate)
     if (dir === 'L') return;
     snDir = dir; snQueue = [];
-    snRunning = true; Sfx.play('click');
+    snRunning = true; Sfx.play('click'); Stats.played('snake', snDiff);
     document.getElementById('snOverlay').style.display = 'none';
     const speed = SN_SPEEDS[document.getElementById('snDiff').value];
     snLoop = setInterval(snTick, speed);
@@ -113,6 +113,7 @@ function snTick() {
 function snGameOver(win) {
   snStop();
   Sfx.play(win ? 'win' : 'lose');
+  if (win) Fx.confetti();
   const ov = document.getElementById('snOverlay');
   ov.style.display = 'flex';
   ov.innerHTML = '<p>' + (win ? '🏆 Grille complète !' : '💀 Game over') + '</p><small>Score : ' + snScore + ' &nbsp;·&nbsp; Flèches ou ZQSD pour rejouer</small>';
@@ -163,10 +164,15 @@ GAMES.snake = {
     document.addEventListener('visibilitychange', snAutoPause);
     window.addEventListener('blur', snAutoPause);
     initSnake();
-    const reset = () => { if (document.activeElement) document.activeElement.blur(); initSnake(); };
-    document.getElementById('snReset').addEventListener('click', reset);
-    document.getElementById('snDiff').addEventListener('change', reset);
+    document.getElementById('snReset').addEventListener('click', () => {
+      document.activeElement.blur();
+      confirmAbandon(initSnake, 'Rejouer');
+    });
+    const sel = document.getElementById('snDiff');
+    sel.addEventListener('change', () => { sel.blur(); confirmChange(sel, snDiff, initSnake, 'Rejouer'); });
   },
+  inProgress() { return !!snRunning; },
+  pause() { snPause(true); },
   stop() {
     snStop();
     document.removeEventListener('keydown', snKeyHandler);
