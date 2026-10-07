@@ -285,6 +285,58 @@
   .sol-corner { position: absolute; top: 0.7cqw; left: 1cqw; line-height: 1.05; }
   .sol-big { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 6.5cqw; padding-top: 2.5cqw; }
   .sol-tab { align-items: start; }
+
+  /* ── SCORES (style borne d'arcade) ────────── */
+  .shell-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+  .shell-bar .back-btn { margin-bottom: 0; }
+  .menu-bar { margin-bottom: 1rem; }
+  .sc-back {
+    position: fixed; inset: 0; z-index: 1000; padding: 1rem;
+    background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center;
+  }
+  .sc-panel {
+    width: 100%; max-width: 460px; max-height: 94vh; overflow-y: auto;
+    background: #101018; color: #e8e6df; border: 2px solid #ffd24a; border-radius: 12px;
+    padding: 20px 22px; font-family: ui-monospace, 'Courier New', monospace; text-align: center;
+    box-shadow: 0 0 0 4px #101018, 0 0 28px rgba(255,210,74,0.35);
+  }
+  .sc-panel .btn { background: #1d1d2b; color: #e8e6df; border-color: #4a4a60; font-family: inherit; }
+  .sc-panel .btn:hover { background: #2a2a3d; }
+  .sc-panel .btn.sc-ok { background: #ffd24a; color: #101018; border-color: #ffd24a; font-weight: 700; }
+  .sc-kicker { color: #ffd24a; font-weight: 700; letter-spacing: 2px; font-size: 14px; }
+  .sc-big { font-size: 30px; font-weight: 700; margin: 8px 0 2px; color: #5dcaa5; }
+  .sc-sub { font-size: 12px; color: #9a98a8; }
+  .sc-slots { display: flex; gap: 14px; justify-content: center; margin: 18px 0 10px; }
+  .sc-slot { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .sc-slot .sc-letter {
+    font: 700 56px/1 ui-monospace, 'Courier New', monospace; width: 64px; padding-bottom: 4px;
+    border-bottom: 4px solid #555; color: #fff; cursor: pointer;
+  }
+  .sc-slot.on .sc-letter { border-color: #ffd24a; color: #ffd24a; animation: scblink 1s steps(2, start) infinite; }
+  @keyframes scblink { 50% { border-color: transparent; } }
+  .sc-arrow { background: none; border: none; color: #9a98a8; cursor: pointer; font-size: 18px; padding: 2px 10px; }
+  .sc-arrow:hover { color: #ffd24a; }
+  .sc-hint { font-size: 11px; color: #7d7b8c; margin: 10px 0 14px; line-height: 1.5; }
+  .sc-actions { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
+  .sc-tabs, .sc-modes { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 10px; }
+  .sc-tab, .sc-mode {
+    font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+    background: #1d1d2b; color: #b4b2a9; border: 1px solid #3a3a50;
+  }
+  .sc-tab.on, .sc-mode.on { background: #ffd24a; color: #101018; border-color: #ffd24a; font-weight: 700; }
+  .sc-table { margin-top: 14px; font-size: 14px; }
+  .sc-row { display: grid; grid-template-columns: 34px 54px 1fr 84px; gap: 4px; padding: 3px 6px; text-align: left; border-radius: 4px; }
+  .sc-row .sc-n { font-weight: 700; letter-spacing: 3px; color: #ffd24a; }
+  .sc-row .sc-v { text-align: right; padding-right: 8px; }
+  .sc-row .sc-d { color: #7d7b8c; font-size: 11px; align-self: center; text-align: right; }
+  .sc-row.empty { color: #4a4a60; }
+  .sc-row.empty .sc-n { color: #4a4a60; }
+  .sc-row.hi { background: rgba(255,210,74,0.18); outline: 1px solid #ffd24a; }
+  .sc-toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 1100;
+    background: #101018; color: #e8e6df; border: 1px solid #ffd24a; border-radius: 8px;
+    padding: 8px 16px; font-size: 13px;
+  }
 </style>
 </head>
 <body>
@@ -293,6 +345,7 @@
 <div id="menu">
   <p class="hub-title">Mini-jeux</p>
   <p class="hub-sub">Tes petits compagnons de pause — clique sur un jeu disponible pour jouer</p>
+  <div class="menu-bar"><button class="btn" onclick="scShow(currentGame)">🏆 Meilleurs scores</button></div>
   <div class="cards-grid">
     <div class="card ready" role="button" tabindex="0" onclick="startGame('wordle')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('wordle')}">
       <span class="card-icon">🟩</span>
@@ -329,7 +382,10 @@
 
 <!-- ══ GAME SHELL ════════════════════════════════════════════════════ -->
 <div id="game-shell">
-  <button class="back-btn" onclick="goMenu()">← Retour au menu</button>
+  <div class="shell-bar">
+    <button class="back-btn" onclick="goMenu()">← Retour au menu</button>
+    <button class="btn" onclick="scShow(currentGame)">🏆 Scores</button>
+  </div>
   <div id="game-content"></div>
 </div>
 
@@ -349,6 +405,7 @@
   <div class="ms-stats">
     <span>Mines restantes : <strong id="mineCount">40</strong></span>
     <span>Temps : <strong id="timer">0s</strong></span>
+    <span>Record : <strong id="msBest">—</strong></span>
   </div>
   <div class="grid-wrap"><div class="ms-grid" id="msGrid"></div></div>
   <div class="banner" id="msBanner"></div>
@@ -454,9 +511,207 @@
 
 <script>
 /* ════════════════════════════════════════════
+   SCORES  (tableaux locaux, saisie du nom façon borne d'arcade)
+════════════════════════════════════════════ */
+const SC_KEY = 'minijeux.scores.v1', SC_NAME_KEY = 'minijeux.name', SC_MAX = 10;
+const SC_ORDER = ['wordle', 'minesweeper', 'snake', '2048', 'solitaire'];
+const SC_GAMES = {
+  wordle:      { icon:'🟩', label:'Wordle',   dir:'asc',  modes:{ 5:'5 lettres', 6:'6 lettres', 7:'7 lettres' },
+                 fmt: v => Math.floor(v / 1000) + (v < 2000 ? ' essai' : ' essais') + ' · ' + (v % 1000) + ' s' },
+  minesweeper: { icon:'💣', label:'Démineur', dir:'asc',  modes:{ easy:'Facile', medium:'Moyen', hard:'Difficile' },
+                 fmt: v => (v / 100).toFixed(2) + ' s' },
+  snake:       { icon:'🐍', label:'Snake',    dir:'desc', modes:{ slow:'Facile', medium:'Moyen', fast:'Difficile' },
+                 fmt: v => v + ' pts' },
+  '2048':      { icon:'🧩', label:'2048',     dir:'desc', modes:{ all:'Classique' },
+                 fmt: v => v + ' pts' },
+  solitaire:   { icon:'🃏', label:'Solitaire', dir:'asc', modes:{ 1:'Pioche 1', 3:'Pioche 3' },
+                 fmt: v => v + ' coups' }
+};
+let currentGame = 'wordle', scData = null, scUI = null;
+
+function scLoad() {
+  if (scData) return scData;
+  scData = {};
+  try { scData = JSON.parse(localStorage.getItem(SC_KEY)) || {}; } catch (e) {}
+  return scData;
+}
+function scSave() { try { localStorage.setItem(SC_KEY, JSON.stringify(scData)); } catch (e) {} }
+
+function scList(g, m) {
+  const raw = (scLoad()[g] || {})[m];
+  if (!Array.isArray(raw)) return [];
+  return raw.map(e => {
+    const n = String((e && e.n) || '').replace(/[^A-Z]/g, '').slice(0, 3) || '???';
+    const d = Number(e && e.d) || 0;
+    return { n, v: Number(e && e.v) || 0, d, id: d + '-' + n };
+  }).slice(0, SC_MAX);
+}
+function scBest(g, m) { const l = scList(g, m); return l.length ? l[0].v : null; }
+
+// rang (0-based) qu'aurait ce score, ou -1 s'il n'entre pas dans le top
+function scRank(g, m, v) {
+  const l = scList(g, m), asc = SC_GAMES[g].dir === 'asc';
+  let i = 0;
+  while (i < l.length && (asc ? l[i].v <= v : l[i].v >= v)) i++;
+  return i < SC_MAX ? i : -1;
+}
+function scAdd(g, m, v, n) {
+  const rank = scRank(g, m, v), l = scList(g, m);
+  const d = Date.now();
+  l.splice(rank, 0, { n, v, d });
+  scLoad(); (scData[g] = scData[g] || {})[m] = l.slice(0, SC_MAX).map(e => ({ n: e.n, v: e.v, d: e.d }));
+  scSave();
+  return d + '-' + n;
+}
+
+function scLastName() {
+  try { const n = localStorage.getItem(SC_NAME_KEY); if (/^[A-Z]{3}$/.test(n)) return n; } catch (e) {}
+  return 'AAA';
+}
+
+function scToast(txt) {
+  const t = document.createElement('div');
+  t.className = 'sc-toast'; t.textContent = txt;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+function scClose() { if (scUI) { scUI.el.remove(); scUI = null; } }
+
+function scOpen(handlers) {
+  scClose();
+  if (document.activeElement) document.activeElement.blur();
+  const el = document.createElement('div');
+  el.className = 'sc-back';
+  el.innerHTML = '<div class="sc-panel" role="dialog" aria-modal="true"></div>';
+  document.body.appendChild(el);
+  scUI = Object.assign({ el, panel: el.firstChild, t: Date.now() }, handlers);
+  return scUI;
+}
+
+// Tant qu'une fenêtre de scores est ouverte, elle capte tout le clavier (le jeu en dessous ne reçoit rien)
+window.addEventListener('keydown', e => {
+  if (!scUI || e.ctrlKey || e.metaKey || e.altKey || e.key === 'Tab') return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  if (Date.now() - scUI.t < 600) return;   // évite de valider par réflexe avec la touche du jeu
+  scUI.key(e);
+}, true);
+
+// Soumet un score : si il entre dans le top, saisie du nom (3 lettres) puis affichage du tableau
+function scSubmit(g, m, v, done) {
+  const cfg = SC_GAMES[g], rank = scRank(g, m, v);
+  if (rank < 0) { scToast(cfg.fmt(v) + ' — hors du top ' + SC_MAX); if (done) done(); return; }
+  const letters = scLastName().split('');
+  let pos = 0;
+  const ui = scOpen({});
+  const draw = () => {
+    ui.panel.innerHTML =
+      '<p class="sc-kicker">★ NOUVEAU SCORE ★</p>' +
+      '<p class="sc-big">' + cfg.fmt(v) + '</p>' +
+      '<p class="sc-sub">' + cfg.icon + ' ' + cfg.label + ' · ' + cfg.modes[m] + ' · rang n°' + (rank + 1) + '</p>' +
+      '<div class="sc-slots">' + letters.map((l, i) =>
+        '<div class="sc-slot' + (i === pos ? ' on' : '') + '">' +
+        '<button class="sc-arrow" data-a="up" data-i="' + i + '" aria-label="Lettre suivante">▲</button>' +
+        '<span class="sc-letter" data-a="sel" data-i="' + i + '">' + l + '</span>' +
+        '<button class="sc-arrow" data-a="down" data-i="' + i + '" aria-label="Lettre précédente">▼</button></div>').join('') + '</div>' +
+      '<p class="sc-hint">↑ ↓ change la lettre · ← → change de case<br>ou tape directement tes initiales · Entrée pour valider</p>' +
+      '<div class="sc-actions"><button class="btn" data-a="skip">Passer</button><button class="btn sc-ok" data-a="ok">Valider</button></div>';
+  };
+  const shift = (i, d) => { letters[i] = String.fromCharCode((letters[i].charCodeAt(0) - 65 + d + 26) % 26 + 65); };
+  const finish = save => {
+    let id = null;
+    if (save) {
+      const name = letters.join('');
+      try { localStorage.setItem(SC_NAME_KEY, name); } catch (e) {}
+      id = scAdd(g, m, v, name);
+    }
+    scClose();
+    if (done) done();
+    if (save) scShow(g, m, id);
+  };
+  ui.key = e => {
+    if (e.key === 'ArrowUp') shift(pos, 1);
+    else if (e.key === 'ArrowDown') shift(pos, -1);
+    else if (e.key === 'ArrowLeft') pos = Math.max(0, pos - 1);
+    else if (e.key === 'ArrowRight') pos = Math.min(2, pos + 1);
+    else if (e.key === 'Backspace') pos = Math.max(0, pos - 1);
+    else if (e.key === 'Enter') { finish(true); return; }
+    else if (e.key === 'Escape') { finish(false); return; }
+    else if (/^[a-zA-Z]$/.test(e.key)) { letters[pos] = e.key.toUpperCase(); pos = Math.min(2, pos + 1); }
+    else return;
+    draw();
+  };
+  ui.el.addEventListener('click', e => {
+    const b = e.target.closest('[data-a]');
+    if (!b) return;
+    const a = b.dataset.a, i = +b.dataset.i;
+    if (a === 'ok') return finish(true);
+    if (a === 'skip') return finish(false);
+    if (a === 'up') { pos = i; shift(i, 1); }
+    else if (a === 'down') { pos = i; shift(i, -1); }
+    else if (a === 'sel') pos = i;
+    draw();
+  });
+  draw();
+}
+
+// Tableau des meilleurs scores (g/m : jeu et mode affichés, hi : entrée à mettre en évidence)
+function scShow(g, m, hi) {
+  if (!SC_GAMES[g]) g = 'snake';
+  const st = { g, m: (SC_GAMES[g].modes[m] !== undefined) ? String(m) : Object.keys(SC_GAMES[g].modes)[0] };
+  const ui = scOpen({});
+  const render = () => {
+    const cfg = SC_GAMES[st.g], list = scList(st.g, st.m);
+    let h = '<p class="sc-kicker">🏆 MEILLEURS SCORES</p>';
+    h += '<div class="sc-tabs">' + SC_ORDER.map(k =>
+      '<button class="sc-tab' + (k === st.g ? ' on' : '') + '" data-g="' + k + '">' + SC_GAMES[k].icon + ' ' + SC_GAMES[k].label + '</button>').join('') + '</div>';
+    h += '<div class="sc-modes">' + Object.keys(cfg.modes).map(k =>
+      '<button class="sc-mode' + (k === st.m ? ' on' : '') + '" data-m="' + k + '">' + cfg.modes[k] + '</button>').join('') + '</div>';
+    h += '<div class="sc-table">';
+    for (let i = 0; i < SC_MAX; i++) {
+      const e = list[i];
+      h += e
+        ? '<div class="sc-row' + (e.id === hi ? ' hi' : '') + '"><span>' + (i + 1) + '.</span><span class="sc-n">' + e.n + '</span><span class="sc-v">' + cfg.fmt(e.v) + '</span><span class="sc-d">' + new Date(e.d).toLocaleDateString('fr-FR') + '</span></div>'
+        : '<div class="sc-row empty"><span>' + (i + 1) + '.</span><span class="sc-n">---</span><span class="sc-v">-</span><span class="sc-d"></span></div>';
+    }
+    h += '</div><p class="sc-hint">← → mode · ↑ ↓ jeu · Échap pour fermer</p>' +
+         '<div class="sc-actions"><button class="btn" data-a="reset">Effacer ce tableau</button><button class="btn sc-ok" data-a="close">Fermer</button></div>';
+    ui.panel.innerHTML = h;
+  };
+  const step = (arr, cur, d) => arr[(arr.indexOf(cur) + d + arr.length) % arr.length];
+  ui.key = e => {
+    const modes = Object.keys(SC_GAMES[st.g].modes);
+    if (e.key === 'Escape' || e.key === 'Enter') { scClose(); return; }
+    if (e.key === 'ArrowLeft')  st.m = step(modes, st.m, -1);
+    else if (e.key === 'ArrowRight') st.m = step(modes, st.m, 1);
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      st.g = step(SC_ORDER, st.g, e.key === 'ArrowUp' ? -1 : 1);
+      st.m = Object.keys(SC_GAMES[st.g].modes)[0];
+    } else return;
+    hi = null; render();
+  };
+  ui.el.addEventListener('click', e => {
+    if (e.target === ui.el) { scClose(); return; }
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.g) { st.g = b.dataset.g; st.m = Object.keys(SC_GAMES[st.g].modes)[0]; hi = null; }
+    else if (b.dataset.m) { st.m = b.dataset.m; hi = null; }
+    else if (b.dataset.a === 'close') { scClose(); return; }
+    else if (b.dataset.a === 'reset') {
+      if (!confirm('Effacer ce tableau de scores ?')) return;
+      if (scLoad()[st.g]) delete scData[st.g][st.m];
+      scSave();
+    }
+    render();
+  });
+  render();
+}
+
+/* ════════════════════════════════════════════
    NAVIGATION
 ════════════════════════════════════════════ */
 function startGame(id) {
+  currentGame = id;
   document.getElementById('menu').style.display = 'none';
   const shell = document.getElementById('game-shell');
   shell.style.display = 'block';
@@ -488,6 +743,7 @@ function startGame(id) {
 }
 
 function goMenu() {
+  scClose();
   clearInterval(msTimer);
   snStop();
   solStop();
@@ -507,7 +763,7 @@ const MS_CONFIGS = {
   hard:   { rows: 16, cols: 30, mines: 99 }
 };
 let msCfg, msBoard, msRevealed, msFlagged, msMines,
-    msOver, msStarted, msTimer, msElapsed;
+    msOver, msStarted, msTimer, msElapsed, msStart;
 
 function initMinesweeper() {
   msCfg      = MS_CONFIGS[document.getElementById('diff').value];
@@ -523,6 +779,7 @@ function initMinesweeper() {
   document.getElementById('msBanner').textContent  = '';
   document.getElementById('resetBtn').onclick      = initMinesweeper;
   document.getElementById('diff').onchange         = initMinesweeper;
+  msShowBest();
   msRender();
 }
 
@@ -559,7 +816,7 @@ function msReveal(r, c) {
 function msClick(r, c) {
   if (msOver||msRevealed[r][c]||msFlagged[r][c]) return;
   if (!msStarted) {
-    msPlaceMines(r,c); msStarted=true;
+    msPlaceMines(r,c); msStarted=true; msStart=Date.now();
     msTimer=setInterval(()=>{
       msElapsed++;
       document.getElementById('timer').textContent=msElapsed+'s';
@@ -589,6 +846,14 @@ function msEnd(win, hitR, hitC) {
   const b=document.getElementById('msBanner');
   b.textContent = win ? 'Bravo, toutes les mines sont déminées !' : 'Boom ! Tu as déclenché une mine.';
   b.className   = 'banner '+(win?'win':'lose');
+  if (win) scSubmit('minesweeper', document.getElementById('diff').value, Math.round((Date.now()-msStart)/10), msShowBest);
+}
+
+function msShowBest() {
+  const el = document.getElementById('msBest');
+  if (!el) return;
+  const best = scBest('minesweeper', document.getElementById('diff').value);
+  el.textContent = best === null ? '—' : SC_GAMES.minesweeper.fmt(best);
 }
 
 function msCheckWin() {
@@ -720,7 +985,7 @@ function normalize(str) {
 }
 
 const WD_ROWS = 6;
-let wdLen, wdTarget, wdNormTarget, wdGuesses, wdCurrentRow, wdCurrentCol, wdOver;
+let wdLen, wdTarget, wdNormTarget, wdGuesses, wdCurrentRow, wdCurrentCol, wdOver, wdStart = null;
 const WD_KB = [
   ['A','Z','E','R','T','Y','U','I','O','P'],
   ['Q','S','D','F','G','H','J','K','L','M'],
@@ -740,7 +1005,7 @@ function initWordle() {
   wdTarget     = pool[Math.floor(Math.random() * pool.length)].toUpperCase();
   wdNormTarget = normalize(wdTarget);
   wdGuesses    = Array(WD_ROWS).fill(null).map(() => Array(wdLen).fill(''));
-  wdCurrentRow = 0; wdCurrentCol = 0; wdOver = false; wdKeyColors = {};
+  wdCurrentRow = 0; wdCurrentCol = 0; wdOver = false; wdKeyColors = {}; wdStart = null;
   document.getElementById('wdMsg').textContent = '';
   if (document.activeElement) document.activeElement.blur();
   wdRenderGrid(); wdRenderKeyboard();
@@ -748,6 +1013,7 @@ function initWordle() {
 
 function wdType(letter) {
   if (wdOver || wdCurrentCol >= wdLen) return;
+  if (!wdStart) wdStart = Date.now();
   wdGuesses[wdCurrentRow][wdCurrentCol] = letter;
   wdCurrentCol++;
   wdRenderGrid();
@@ -791,6 +1057,7 @@ function wdSubmit() {
   if (normGuess === wdNormTarget) {
     wdOver = true;
     wdMsg('Bravo ! Le mot était ' + wdTarget + ' 🎉');
+    scSubmit('wordle', String(wdLen), (wdCurrentRow + 1) * 1000 + Math.min(999, Math.round((Date.now() - wdStart) / 1000)));
     return;
   }
   wdCurrentRow++; wdCurrentCol = 0;
@@ -906,6 +1173,7 @@ function snInput(dir) {
 function initSnake() {
   snStop();
   snDiff   = document.getElementById('snDiff') ? document.getElementById('snDiff').value : 'medium';
+  snBest   = scBest('snake', snDiff) || 0;
   snDir    = 'R'; snQueue = [];
   snBody   = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
   snScore  = 0;
@@ -957,6 +1225,7 @@ function snGameOver(win) {
   ov.style.display = 'flex';
   ov.innerHTML = '<p>' + (win ? '🏆 Grille complète !' : '💀 Game over') + '</p><small>Score : ' + snScore + ' &nbsp;·&nbsp; Flèches ou ZQSD pour rejouer</small>';
   // Relancer sur prochaine touche directionnelle (géré dans snKeyHandler via snRunning=false)
+  if (snScore > 0) scSubmit('snake', snDiff, snScore);
 }
 
 function snDraw() {
@@ -1000,7 +1269,6 @@ function snDraw() {
 ════════════════════════════════════════════ */
 const TF_N = 4;
 let tfBoard, tfScore, tfBest = 0, tfOver, tfPaused, tfKeep, tfNew = -1;
-try { tfBest = parseInt(localStorage.getItem('tfBest')) || 0; } catch (e) {}
 
 function tfKeyHandler(e) {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -1016,6 +1284,7 @@ function tfKeyHandler(e) {
 
 function initTf() {
   tfBoard = Array.from({ length: TF_N }, () => Array(TF_N).fill(0));
+  tfBest = scBest('2048', 'all') || 0;
   tfScore = 0; tfOver = false; tfPaused = false; tfKeep = false; tfNew = -1;
   tfAdd(); tfAdd();
   const b = document.getElementById('tfBanner');
@@ -1058,17 +1327,15 @@ function tfMove(dir) {
   }
   if (!moved) return;
   tfScore += gain;
-  if (tfScore > tfBest) {
-    tfBest = tfScore;
-    try { localStorage.setItem('tfBest', tfBest); } catch (e) {}
-  }
+  if (tfScore > tfBest) tfBest = tfScore;
   tfAdd();
   tfRender();
   const banner = document.getElementById('tfBanner');
   if (!tfKeep && tfBoard.flat().includes(2048)) {
     tfPaused = true;
     banner.className = 'banner win';
-    banner.innerHTML = 'Bravo, tu as atteint 2048 ! <button class="btn" id="tfContinue">Continuer</button>';
+    banner.innerHTML = 'Bravo, tu as atteint 2048 ! <button class="btn" id="tfContinue">Continuer</button><button class="btn" id="tfSave">Enregistrer mon score</button>';
+    document.getElementById('tfSave').onclick = () => { document.activeElement.blur(); scSubmit('2048', 'all', tfScore); };
     document.getElementById('tfContinue').onclick = () => {
       tfKeep = true; tfPaused = false; banner.className = 'banner'; banner.textContent = '';
       document.activeElement.blur();
@@ -1077,6 +1344,7 @@ function tfMove(dir) {
     tfOver = true;
     banner.className = 'banner lose';
     banner.textContent = 'Plus de mouvement possible. Score : ' + tfScore;
+    if (tfScore > 0) scSubmit('2048', 'all', tfScore);
   }
 }
 
@@ -1476,6 +1744,10 @@ function solRender() {
     const b = document.getElementById('solBanner');
     b.className = 'banner win';
     b.textContent = 'Bravo, tu as gagné en ' + sol.moves + ' coups !';
+    if (!sol.scored) {
+      sol.scored = true;
+      scSubmit('solitaire', document.getElementById('solDraw').value, sol.moves);
+    }
   }
 }
 
