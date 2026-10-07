@@ -4,11 +4,32 @@
 const SN_SPEEDS = { slow: 180, medium: 110, fast: 60 };
 const SN_COLS = 20, SN_ROWS = 20;
 
-let snLoop, snDir, snQueue = [], snBody, snFood, snScore, snBest = 0, snRunning, snDiff;
+let snLoop, snDir, snQueue = [], snBody, snFood, snScore, snBest = 0, snRunning, snDiff, snPaused = false;
 
-function snStop() { clearInterval(snLoop); snRunning = false; }
+function snStop() { clearInterval(snLoop); snRunning = false; snPaused = false; }
+
+// Pause : Espace ou P ; automatique quand la fenêtre ou l'onglet perd le focus
+function snPause(on) {
+  if (!snRunning || on === snPaused) return;
+  snPaused = on;
+  const ov = document.getElementById('snOverlay');
+  if (on) {
+    clearInterval(snLoop);
+    ov.style.display = 'flex';
+    ov.innerHTML = '<p>⏸ Pause</p><small>Espace pour reprendre</small>';
+  } else {
+    ov.style.display = 'none';
+    snLoop = setInterval(snTick, SN_SPEEDS[snDiff]);
+  }
+}
+function snAutoPause(e) { if (e.type === 'blur' || document.hidden) snPause(true); }
 
 function snKeyHandler(e) {
+  if ((e.key === ' ' || e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault();
+    if (snRunning) snPause(!snPaused);
+    return;
+  }
   const map = {
     ArrowUp:'U', ArrowDown:'D', ArrowLeft:'L', ArrowRight:'R',
     z:'U', Z:'U', s:'D', S:'D', q:'L', Q:'L', d:'R', D:'R'
@@ -20,14 +41,14 @@ function snKeyHandler(e) {
 }
 
 function snInput(dir) {
-  if (!document.getElementById('snCanvas')) return;
+  if (!document.getElementById('snCanvas') || snPaused) return;
   // Démarrer ou redémarrer si en attente
   if (!snRunning) {
     initSnake();
     // Au départ le corps est à gauche de la tête : on ignore ← (mort immédiate)
     if (dir === 'L') return;
     snDir = dir; snQueue = [];
-    snRunning = true;
+    snRunning = true; Sfx.play('click');
     document.getElementById('snOverlay').style.display = 'none';
     const speed = SN_SPEEDS[document.getElementById('snDiff').value];
     snLoop = setInterval(snTick, speed);
@@ -53,7 +74,7 @@ function initSnake() {
   document.getElementById('snBest').textContent  = snBest;
   const ov = document.getElementById('snOverlay');
   ov.style.display = 'flex';
-  ov.innerHTML = '<p>🐍 Snake</p><small>Flèches ou ZQSD pour démarrer</small>';
+  ov.innerHTML = '<p>🐍 Snake</p><small>Flèches ou ZQSD pour démarrer · Espace = pause</small>';
   snDraw();
 }
 
@@ -77,7 +98,7 @@ function snTick() {
 
   snBody.unshift({x:nx, y:ny});
   if (nx===snFood.x && ny===snFood.y) {
-    snScore++;
+    snScore++; Sfx.play('eat');
     if (snScore > snBest) snBest = snScore;
     document.getElementById('snScore').textContent = snScore;
     document.getElementById('snBest').textContent  = snBest;
@@ -91,6 +112,7 @@ function snTick() {
 
 function snGameOver(win) {
   snStop();
+  Sfx.play(win ? 'win' : 'lose');
   const ov = document.getElementById('snOverlay');
   ov.style.display = 'flex';
   ov.innerHTML = '<p>' + (win ? '🏆 Grille complète !' : '💀 Game over') + '</p><small>Score : ' + snScore + ' &nbsp;·&nbsp; Flèches ou ZQSD pour rejouer</small>';
@@ -138,10 +160,17 @@ function snDraw() {
 GAMES.snake = {
   start() {
     document.addEventListener('keydown', snKeyHandler);
+    document.addEventListener('visibilitychange', snAutoPause);
+    window.addEventListener('blur', snAutoPause);
     initSnake();
     const reset = () => { if (document.activeElement) document.activeElement.blur(); initSnake(); };
     document.getElementById('snReset').addEventListener('click', reset);
     document.getElementById('snDiff').addEventListener('change', reset);
   },
-  stop() { snStop(); document.removeEventListener('keydown', snKeyHandler); }
+  stop() {
+    snStop();
+    document.removeEventListener('keydown', snKeyHandler);
+    document.removeEventListener('visibilitychange', snAutoPause);
+    window.removeEventListener('blur', snAutoPause);
+  }
 };
