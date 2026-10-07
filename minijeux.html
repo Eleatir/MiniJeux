@@ -224,7 +224,7 @@
   .tf-board {
     container-type: inline-size;
     width: 100%; max-width: 400px; aspect-ratio: 1;
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.5cqw;
+    display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 2.5cqw;
     padding: 2.5cqw; border-radius: var(--radius-lg);
     background: var(--surface2); border: 0.5px solid var(--border2);
     touch-action: none; user-select: none;
@@ -249,9 +249,20 @@
   .tf-2048 { background:#edc22e; color:#fff; font-size: 6cqw; }
   .tf-big  { background:#3c3a32; color:#fff; font-size: 5cqw; }
   .banner .btn { margin-left: 10px; }
+  .rules {
+    margin-top: 1rem; max-width: 400px; padding: 10px 14px;
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius); font-size: 13px; color: var(--text2); line-height: 1.55;
+  }
+  .rules summary { cursor: pointer; font-weight: 500; color: var(--text); font-size: 14px; }
+  .rules ul { margin: 8px 0 2px 18px; display: flex; flex-direction: column; gap: 6px; }
+  .rules strong { color: var(--text); font-weight: 500; }
 
   /* ── SOLITAIRE ────────────────────────────── */
-  .sol-board { container-type: inline-size; width: 100%; max-width: 720px; user-select: none; }
+  .sol-board { container-type: inline-size; position: relative; width: 100%; max-width: 720px; user-select: none; }
+  .sol-ghost { position: absolute; z-index: 50; pointer-events: none; }
+  .sol-ghost .sol-card { box-shadow: 0 6px 14px rgba(0,0,0,0.35); }
+  .sol-slot.drop { outline: 2px solid #3b6d11; outline-offset: -2px; }
   .sol-top, .sol-tab { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1.4cqw; }
   .sol-top { margin-bottom: 3cqw; }
   .sol-slot {
@@ -265,6 +276,7 @@
     border-radius: 1.2cqw; background: #fff; color: #1a1a18;
     border: 1px solid rgba(0,0,0,0.3); font-weight: 500; cursor: pointer;
     box-shadow: 0 1px 2px rgba(0,0,0,0.15); font-size: 3.3cqw; overflow: hidden;
+    touch-action: none;
   }
   .sol-card.red { color: #a32d2d; }
   .sol-card.back {
@@ -394,6 +406,19 @@
   <div class="tf-board" id="tfBoard"></div>
   <div class="banner" id="tfBanner"></div>
   <p class="hint">Flèches, Z Q S D ou swipe &nbsp;·&nbsp; Deux tuiles identiques fusionnent</p>
+  <details class="rules" open>
+    <summary>Règles et fonctionnement</summary>
+    <ul>
+      <li><strong>But :</strong> faire apparaître une tuile <strong>2048</strong> en fusionnant des tuiles.</li>
+      <li><strong>Déplacer :</strong> flèches du clavier, touches Z Q S D, ou swipe sur la grille. Toutes les tuiles glissent d'un coup dans la direction choisie, jusqu'au bord ou jusqu'à la tuile suivante.</li>
+      <li><strong>Fusionner :</strong> deux tuiles de même valeur qui se rencontrent deviennent une seule tuile de valeur double (2+2 = 4, 4+4 = 8…). Le score augmente de la valeur obtenue.</li>
+      <li><strong>Une fusion par tuile et par coup :</strong> en poussant la ligne 2-2-2-2 vers la gauche, on obtient 4-4, pas 8.</li>
+      <li><strong>Nouvelle tuile :</strong> après chaque déplacement qui change la grille, une tuile apparaît sur une case vide (un 2 dans 90 % des cas, un 4 sinon). Un déplacement sans effet ne compte pas.</li>
+      <li><strong>Victoire :</strong> à 2048, tu peux arrêter ou continuer pour battre ton score.</li>
+      <li><strong>Défaite :</strong> la grille est pleine et aucune fusion n'est possible.</li>
+      <li><strong>Astuce :</strong> garde ta plus grosse tuile dans un coin et évite de pousser dans la direction opposée.</li>
+    </ul>
+  </details>
 </template>
 
 <!-- ══ TEMPLATE SOLITAIRE ════════════════════════════════════════════ -->
@@ -414,7 +439,7 @@
   </div>
   <div class="sol-board" id="solBoard"></div>
   <div class="banner" id="solBanner"></div>
-  <p class="hint">Clique une carte puis sa destination &nbsp;·&nbsp; Double-clic = vers les fondations &nbsp;·&nbsp; Roi sur colonne vide</p>
+  <p class="hint">Glisse-dépose une carte (ou clique-la puis sa destination) &nbsp;·&nbsp; Double-clic = vers les fondations &nbsp;·&nbsp; Roi sur colonne vide</p>
 </template>
 
 <!-- ══ TEMPLATE WORDLE ═══════════════════════════════════════════════ -->
@@ -1147,6 +1172,7 @@ function initSolitaire() {
   b.className = 'banner'; b.textContent = '';
   const board = document.getElementById('solBoard');
   board.onclick = solClick;
+  board.onpointerdown = solPointerDown;
   document.getElementById('solReset').onclick = () => { document.activeElement.blur(); initSolitaire(); };
   document.getElementById('solDraw').onchange = () => { document.activeElement.blur(); initSolitaire(); };
   document.getElementById('solUndo').onclick = () => { document.activeElement.blur(); solUndo(); };
@@ -1219,7 +1245,93 @@ function solAutoFound(z, i, idx) {
   return false;
 }
 
+let solDrag = null, solNoClick = false;
+
+function solPointerDown(e) {
+  if (e.button !== 0 || sol.won || solDrag) return;
+  const el = e.target.closest('.sol-card[data-zone]');
+  if (!el) return;
+  const z = el.dataset.zone, i = +el.dataset.i;
+  const idx = el.dataset.idx === undefined ? -1 : +el.dataset.idx;
+  if (z === 's') return;
+  const arr = solArr(z, i);
+  let sel = null;
+  if (z === 'w' && arr.length) sel = { from: 'w', i: 0, n: 1 };
+  else if (z === 'f' && arr.length) sel = { from: 'f', i, n: 1 };
+  else if (z === 't' && idx >= 0 && arr[idx].up) sel = { from: 't', i, n: arr.length - idx };
+  if (!sel) return;
+  const els = z === 't'
+    ? [...document.querySelectorAll('.sol-card[data-zone="t"][data-i="' + i + '"]')].filter(c => +c.dataset.idx >= idx)
+    : [el];
+  solDrag = { sel, els, x0: e.clientX, y0: e.clientY, active: false, ghost: null, ox: 0, oy: 0 };
+  document.addEventListener('pointermove', solPointerMove);
+  document.addEventListener('pointerup', solPointerUp);
+  document.addEventListener('pointercancel', solPointerUp);
+}
+
+function solDragStart() {
+  const d = solDrag, board = document.getElementById('solBoard');
+  const br = board.getBoundingClientRect(), fr = d.els[0].getBoundingClientRect();
+  d.ox = d.x0 - fr.left; d.oy = d.y0 - fr.top; d.br = br;
+  const ghost = document.createElement('div');
+  ghost.className = 'sol-ghost';
+  ghost.style.width = fr.width + 'px';
+  d.els.forEach(el => {
+    const r = el.getBoundingClientRect(), c = el.cloneNode(true);
+    c.classList.remove('sel');
+    c.style.left = '0'; c.style.top = (r.top - fr.top) + 'px';
+    c.style.width = r.width + 'px'; c.style.height = r.height + 'px';
+    c.style.fontSize = getComputedStyle(el).fontSize;
+    ghost.appendChild(c);
+    el.style.opacity = '0.25';
+  });
+  board.appendChild(ghost);
+  d.ghost = ghost; d.active = true;
+  solSel = null;
+  document.querySelectorAll('.sol-slot[data-zone="t"], .sol-slot[data-zone="f"]').forEach(sl => {
+    if (solCanMove(d.sel, sl.dataset.zone, +sl.dataset.i)) sl.classList.add('drop');
+  });
+}
+
+function solPointerMove(e) {
+  const d = solDrag;
+  if (!d) return;
+  if (!d.active) {
+    if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 6) return;
+    solDragStart();
+  }
+  e.preventDefault();
+  d.ghost.style.left = (e.clientX - d.ox - d.br.left) + 'px';
+  d.ghost.style.top  = (e.clientY - d.oy - d.br.top) + 'px';
+}
+
+function solPointerUp(e) {
+  const d = solDrag;
+  document.removeEventListener('pointermove', solPointerMove);
+  document.removeEventListener('pointerup', solPointerUp);
+  document.removeEventListener('pointercancel', solPointerUp);
+  solDrag = null;
+  if (!d || !d.active) return;
+  solNoClick = true; setTimeout(() => { solNoClick = false; }, 100);
+  let moved = false;
+  if (e.type === 'pointerup') {
+    // cible : sous le pointeur, sinon sous le centre de la carte tirée
+    const gr = d.ghost.firstChild.getBoundingClientRect();
+    const pts = [[e.clientX, e.clientY], [gr.left + gr.width / 2, gr.top + gr.height / 2]];
+    for (const [x, y] of pts) {
+      const t = document.elementFromPoint(x, y), tz = t && t.closest('[data-zone]');
+      if (!tz) continue;
+      const z = tz.dataset.zone, i = +tz.dataset.i;
+      if ((z === 't' || z === 'f') && solCanMove(d.sel, z, i)) { solDoMove(d.sel, z, i); moved = true; break; }
+    }
+  }
+  d.ghost.remove();
+  solSel = null;
+  solRender();
+}
+
 function solClick(e) {
+  if (solNoClick) return;
   const el = e.target.closest('[data-zone]');
   if (!el || sol.won) return;
   const z = el.dataset.zone, i = +el.dataset.i;
