@@ -90,6 +90,7 @@
 
   /* ── GAME SHELL ───────────────────────────── */
   #game-shell { max-width: 720px; margin: 0 auto; display: none; }
+  #game-shell.wide { max-width: 1040px; }
   .back-btn {
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 13px; color: var(--text2);
@@ -122,11 +123,9 @@
   .sn-controls { display: flex; gap: 8px; align-items: center; }
   .sn-stats { display: flex; gap: 16px; margin-bottom: 1rem; font-size: 14px; color: var(--text2); }
   .sn-stats strong { font-weight: 500; color: var(--text); }
-  .sn-wrap { position: relative; display: inline-block; max-width: 100%; }
-  .sn-pad { display: none; gap: 8px; margin-top: 10px; }
-  @media (pointer: coarse) { .sn-pad { display: flex; } }
+  .sn-wrap { position: relative; display: inline-block; }
   #snCanvas {
-    display: block; max-width: 100%; height: auto; touch-action: none;
+    display: block;
     border: 0.5px solid var(--border2);
     border-radius: var(--radius);
     background: var(--surface);
@@ -224,10 +223,10 @@
   .tf-board {
     container-type: inline-size;
     width: 100%; max-width: 400px; aspect-ratio: 1;
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.5cqw;
+    display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 2.5cqw;
     padding: 2.5cqw; border-radius: var(--radius-lg);
     background: var(--surface2); border: 0.5px solid var(--border2);
-    touch-action: none; user-select: none;
+    user-select: none;
   }
   .tf-cell {
     border-radius: var(--radius); background: var(--border);
@@ -249,9 +248,20 @@
   .tf-2048 { background:#edc22e; color:#fff; font-size: 6cqw; }
   .tf-big  { background:#3c3a32; color:#fff; font-size: 5cqw; }
   .banner .btn { margin-left: 10px; }
+  .rules {
+    margin-top: 1rem; max-width: 400px; padding: 10px 14px;
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius); font-size: 13px; color: var(--text2); line-height: 1.55;
+  }
+  .rules summary { cursor: pointer; font-weight: 500; color: var(--text); font-size: 14px; }
+  .rules ul { margin: 8px 0 2px 18px; display: flex; flex-direction: column; gap: 6px; }
+  .rules strong { color: var(--text); font-weight: 500; }
 
   /* ── SOLITAIRE ────────────────────────────── */
-  .sol-board { container-type: inline-size; width: 100%; max-width: 720px; user-select: none; }
+  .sol-board { container-type: inline-size; position: relative; width: 100%; max-width: 720px; user-select: none; }
+  .sol-ghost { position: absolute; z-index: 50; pointer-events: none; }
+  .sol-ghost .sol-card { box-shadow: 0 6px 14px rgba(0,0,0,0.35); }
+  .sol-slot.drop { outline: 2px solid #3b6d11; outline-offset: -2px; }
   .sol-top, .sol-tab { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1.4cqw; }
   .sol-top { margin-bottom: 3cqw; }
   .sol-slot {
@@ -342,7 +352,7 @@
   </div>
   <div class="grid-wrap"><div class="ms-grid" id="msGrid"></div></div>
   <div class="banner" id="msBanner"></div>
-  <p class="hint">Clic gauche = révéler &nbsp;·&nbsp; Clic droit ou appui long = drapeau</p>
+  <p class="hint">Clic gauche = révéler &nbsp;·&nbsp; Clic droit = drapeau</p>
 </template>
 
 
@@ -367,14 +377,8 @@
     <canvas id="snCanvas" width="400" height="400"></canvas>
     <div class="sn-overlay" id="snOverlay">
       <p>🐍 Snake</p>
-      <small>Flèches, ZQSD ou swipe pour démarrer</small>
+      <small>Flèches ou ZQSD pour démarrer</small>
     </div>
-  </div>
-  <div class="sn-pad">
-    <button class="btn" data-dir="U" aria-label="Haut">↑</button>
-    <button class="btn" data-dir="L" aria-label="Gauche">←</button>
-    <button class="btn" data-dir="D" aria-label="Bas">↓</button>
-    <button class="btn" data-dir="R" aria-label="Droite">→</button>
   </div>
   <p class="hint" style="margin-top:8px;">Flèches directionnelles ou Z Q S D &nbsp;·&nbsp; Le serpent traverse les murs</p>
 </template>
@@ -393,7 +397,20 @@
   </div>
   <div class="tf-board" id="tfBoard"></div>
   <div class="banner" id="tfBanner"></div>
-  <p class="hint">Flèches, Z Q S D ou swipe &nbsp;·&nbsp; Deux tuiles identiques fusionnent</p>
+  <p class="hint">Flèches ou Z Q S D &nbsp;·&nbsp; Deux tuiles identiques fusionnent</p>
+  <details class="rules" open>
+    <summary>Règles et fonctionnement</summary>
+    <ul>
+      <li><strong>But :</strong> faire apparaître une tuile <strong>2048</strong> en fusionnant des tuiles.</li>
+      <li><strong>Déplacer :</strong> flèches du clavier ou touches Z Q S D. Toutes les tuiles glissent d'un coup dans la direction choisie, jusqu'au bord ou jusqu'à la tuile suivante.</li>
+      <li><strong>Fusionner :</strong> deux tuiles de même valeur qui se rencontrent deviennent une seule tuile de valeur double (2+2 = 4, 4+4 = 8…). Le score augmente de la valeur obtenue.</li>
+      <li><strong>Une fusion par tuile et par coup :</strong> en poussant la ligne 2-2-2-2 vers la gauche, on obtient 4-4, pas 8.</li>
+      <li><strong>Nouvelle tuile :</strong> après chaque déplacement qui change la grille, une tuile apparaît sur une case vide (un 2 dans 90 % des cas, un 4 sinon). Un déplacement sans effet ne compte pas.</li>
+      <li><strong>Victoire :</strong> à 2048, tu peux arrêter ou continuer pour battre ton score.</li>
+      <li><strong>Défaite :</strong> la grille est pleine et aucune fusion n'est possible.</li>
+      <li><strong>Astuce :</strong> garde ta plus grosse tuile dans un coin et évite de pousser dans la direction opposée.</li>
+    </ul>
+  </details>
 </template>
 
 <!-- ══ TEMPLATE SOLITAIRE ════════════════════════════════════════════ -->
@@ -414,7 +431,7 @@
   </div>
   <div class="sol-board" id="solBoard"></div>
   <div class="banner" id="solBanner"></div>
-  <p class="hint">Clique une carte puis sa destination &nbsp;·&nbsp; Double-clic = vers les fondations &nbsp;·&nbsp; Roi sur colonne vide</p>
+  <p class="hint">Glisse-dépose une carte (ou clique-la puis sa destination) &nbsp;·&nbsp; Double-clic = fondation ou unique destination possible &nbsp;·&nbsp; Fin de donne automatique &nbsp;·&nbsp; Roi sur colonne vide</p>
 </template>
 
 <!-- ══ TEMPLATE WORDLE ═══════════════════════════════════════════════ -->
@@ -443,6 +460,7 @@ function startGame(id) {
   document.getElementById('menu').style.display = 'none';
   const shell = document.getElementById('game-shell');
   shell.style.display = 'block';
+  shell.classList.toggle('wide', id === 'minesweeper');
   const tpl = document.getElementById('tpl-' + id);
   document.getElementById('game-content').innerHTML = '';
   document.getElementById('game-content').appendChild(tpl.content.cloneNode(true));
@@ -451,7 +469,6 @@ function startGame(id) {
     document.removeEventListener('keydown', snKeyHandler);
     document.addEventListener('keydown', snKeyHandler);
     initSnake();
-    snInitTouch();
     document.getElementById('snReset').addEventListener('click', () => { if(document.activeElement) document.activeElement.blur(); initSnake(); });
     document.getElementById('snDiff').addEventListener('change', () => { if(document.activeElement) document.activeElement.blur(); initSnake(); });
   }
@@ -473,6 +490,7 @@ function startGame(id) {
 function goMenu() {
   clearInterval(msTimer);
   snStop();
+  solStop();
   document.removeEventListener('keydown', snKeyHandler);
   document.removeEventListener('keydown', wdKeyHandler);
   document.removeEventListener('keydown', tfKeyHandler);
@@ -594,13 +612,8 @@ function msRender() {
     } else if (msFlagged[r][c]) {
       d.textContent='🚩';
     }
-    let lp=null, fired=false;
-    d.addEventListener('touchstart',()=>{ fired=false; lp=setTimeout(()=>{ fired=true; msToggleFlag(r,c); },450); },{passive:true});
-    const cancel=()=>clearTimeout(lp);
-    d.addEventListener('touchmove',cancel,{passive:true});
-    d.addEventListener('touchend',e=>{ cancel(); if(fired) e.preventDefault(); });
-    d.addEventListener('click',()=>{ if(!fired) msClick(r,c); fired=false; });
-    d.addEventListener('contextmenu',e=>{ e.preventDefault(); if(!fired) msToggleFlag(r,c); });
+    d.addEventListener('click',()=>msClick(r,c));
+    d.addEventListener('contextmenu',e=>{ e.preventDefault(); msToggleFlag(r,c); });
     g.appendChild(d);
   }
 }
@@ -854,7 +867,7 @@ function wdRenderKeyboard() {
 const SN_SPEEDS = { slow: 180, medium: 110, fast: 60 };
 const SN_COLS = 20, SN_ROWS = 20;
 
-let snLoop, snDir, snNext, snBody, snFood, snScore, snBest = 0, snRunning, snDiff;
+let snLoop, snDir, snQueue = [], snBody, snFood, snScore, snBest = 0, snRunning, snDiff;
 
 function snStop() { clearInterval(snLoop); snRunning = false; }
 
@@ -876,38 +889,24 @@ function snInput(dir) {
     initSnake();
     // Au départ le corps est à gauche de la tête : on ignore ← (mort immédiate)
     if (dir === 'L') return;
-    snDir = dir; snNext = dir;
+    snDir = dir; snQueue = [];
     snRunning = true;
     document.getElementById('snOverlay').style.display = 'none';
     const speed = SN_SPEEDS[document.getElementById('snDiff').value];
     snLoop = setInterval(snTick, speed);
     return;
   }
-  // Interdire demi-tour
+  // Les directions sont mises en file (3 max) : un tick joue une direction, donc deux appuis rapides ne se perdent plus.
+  // Le demi-tour est interdit par rapport à la dernière direction retenue.
   const opp = { U:'D', D:'U', L:'R', R:'L' };
-  if (dir !== opp[snDir]) snNext = dir;
-}
-
-function snInitTouch() {
-  const cv = document.getElementById('snCanvas');
-  let t0 = null;
-  cv.addEventListener('touchstart', e => { t0 = e.touches[0]; e.preventDefault(); }, { passive:false });
-  cv.addEventListener('touchend', e => {
-    if (!t0) return;
-    const t = e.changedTouches[0], dx = t.clientX - t0.clientX, dy = t.clientY - t0.clientY;
-    t0 = null;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
-    snInput(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U'));
-    e.preventDefault();
-  }, { passive:false });
-  document.querySelectorAll('.sn-pad button').forEach(b =>
-    b.addEventListener('click', () => snInput(b.dataset.dir)));
+  const last = snQueue.length ? snQueue[snQueue.length - 1] : snDir;
+  if (dir !== last && dir !== opp[last] && snQueue.length < 3) snQueue.push(dir);
 }
 
 function initSnake() {
   snStop();
   snDiff   = document.getElementById('snDiff') ? document.getElementById('snDiff').value : 'medium';
-  snDir    = 'R'; snNext = 'R';
+  snDir    = 'R'; snQueue = [];
   snBody   = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
   snScore  = 0;
   snRunning = false;
@@ -916,7 +915,7 @@ function initSnake() {
   document.getElementById('snBest').textContent  = snBest;
   const ov = document.getElementById('snOverlay');
   ov.style.display = 'flex';
-  ov.innerHTML = '<p>🐍 Snake</p><small>Flèches, ZQSD ou swipe pour démarrer</small>';
+  ov.innerHTML = '<p>🐍 Snake</p><small>Flèches ou ZQSD pour démarrer</small>';
   snDraw();
 }
 
@@ -930,7 +929,7 @@ function snPlaceFood() {
 }
 
 function snTick() {
-  snDir = snNext;
+  if (snQueue.length) snDir = snQueue.shift();
   const head = snBody[0];
   const nx = (head.x + (snDir==='R'?1:snDir==='L'?-1:0) + SN_COLS) % SN_COLS;
   const ny = (head.y + (snDir==='D'?1:snDir==='U'?-1:0) + SN_ROWS) % SN_ROWS;
@@ -956,7 +955,7 @@ function snGameOver(win) {
   snStop();
   const ov = document.getElementById('snOverlay');
   ov.style.display = 'flex';
-  ov.innerHTML = '<p>' + (win ? '🏆 Grille complète !' : '💀 Game over') + '</p><small>Score : ' + snScore + ' &nbsp;·&nbsp; Flèches, ZQSD ou swipe pour rejouer</small>';
+  ov.innerHTML = '<p>' + (win ? '🏆 Grille complète !' : '💀 Game over') + '</p><small>Score : ' + snScore + ' &nbsp;·&nbsp; Flèches ou ZQSD pour rejouer</small>';
   // Relancer sur prochaine touche directionnelle (géré dans snKeyHandler via snRunning=false)
 }
 
@@ -1022,22 +1021,7 @@ function initTf() {
   const b = document.getElementById('tfBanner');
   b.className = 'banner'; b.textContent = '';
   document.getElementById('tfReset').onclick = () => { document.activeElement.blur(); initTf(); };
-  tfInitTouch();
   tfRender();
-}
-
-function tfInitTouch() {
-  const el = document.getElementById('tfBoard');
-  let t0 = null;
-  el.addEventListener('touchstart', e => { t0 = e.touches[0]; e.preventDefault(); }, { passive:false });
-  el.addEventListener('touchend', e => {
-    if (!t0) return;
-    const t = e.changedTouches[0], dx = t.clientX - t0.clientX, dy = t.clientY - t0.clientY;
-    t0 = null;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
-    tfMove(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U'));
-    e.preventDefault();
-  }, { passive:false });
 }
 
 function tfAdd() {
@@ -1129,6 +1113,7 @@ let sol, solSel = null, solHist = [], solLast = { k: '', t: 0 };
 const solRed = c => c.s === 1 || c.s === 2;
 
 function initSolitaire() {
+  solStop();
   const deck = [];
   for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) deck.push({ s, r, up: false });
   for (let i = deck.length - 1; i > 0; i--) {
@@ -1142,11 +1127,12 @@ function initSolitaire() {
     sol.tab.push(col);
   }
   sol.stock = deck;
-  solSel = null; solHist = []; solLast = { k: '', t: 0 };
+  solSel = null; solHist = []; solLast = { k: '', t: 0 }; solAuto = false;
   const b = document.getElementById('solBanner');
   b.className = 'banner'; b.textContent = '';
   const board = document.getElementById('solBoard');
   board.onclick = solClick;
+  board.onpointerdown = solPointerDown;
   document.getElementById('solReset').onclick = () => { document.activeElement.blur(); initSolitaire(); };
   document.getElementById('solDraw').onchange = () => { document.activeElement.blur(); initSolitaire(); };
   document.getElementById('solUndo').onclick = () => { document.activeElement.blur(); solUndo(); };
@@ -1159,7 +1145,7 @@ function solPush() {
 }
 
 function solUndo() {
-  if (!solHist.length) return;
+  if (!solHist.length || solAuto) return;
   sol = JSON.parse(solHist.pop());
   solSel = null;
   document.getElementById('solBanner').className = 'banner';
@@ -1201,6 +1187,10 @@ function solCanMove(sel, to, j) {
 
 function solDoMove(sel, to, j) {
   solPush();
+  solMoveCore(sel, to, j);
+}
+
+function solMoveCore(sel, to, j) {
   const src = solArr(sel.from, sel.i);
   const moving = src.splice(src.length - sel.n, sel.n);
   (to === 'f' ? sol.found[j] : sol.tab[j]).push(...moving);
@@ -1209,34 +1199,194 @@ function solDoMove(sel, to, j) {
   if (sol.found.every(p => p.length === 13)) sol.won = true;
 }
 
-function solAutoFound(z, i, idx) {
+function solAutoMove(z, i, idx) {
   const src = solArr(z, i);
-  if (z === 'f' || idx !== src.length - 1 || !src[idx].up) return false;
-  for (let j = 0; j < 4; j++) {
-    const sel = { from: z, i, n: 1 };
-    if (solCanMove(sel, 'f', j)) { solDoMove(sel, 'f', j); return true; }
+  let sel;
+  if (z === 'w') { if (!src.length) return false; sel = { from: 'w', i: 0, n: 1 }; }
+  else if (z === 't') { if (idx < 0 || !src[idx] || !src[idx].up) return false; sel = { from: 't', i, n: src.length - idx }; }
+  else return false;
+  // 1) fondations
+  if (sel.n === 1) {
+    for (let j = 0; j < 4; j++) if (solCanMove(sel, 'f', j)) { solDoMove(sel, 'f', j); return true; }
   }
+  // 2) unique destination possible dans le tableau (les colonnes vides comptent pour une seule)
+  const dests = []; let emptyDest = -1;
+  for (let j = 0; j < 7; j++) {
+    if (!solCanMove(sel, 't', j)) continue;
+    if (!sol.tab[j].length) {
+      if (z === 't' && idx === 0) continue;   // roi déjà au fond d'une colonne : inutile
+      if (emptyDest < 0) emptyDest = j;
+    } else dests.push(j);
+  }
+  if (emptyDest >= 0) dests.push(emptyDest);
+  if (dests.length === 1) { solDoMove(sel, 't', dests[0]); return true; }
+  if (dests.length > 1) solSel = sel;        // ambigu : la carte reste sélectionnée
   return false;
 }
 
+/* ── complétion automatique ── */
+let solAuto = false, solTimer = null;
+
+function solAutoStep() {
+  const srcs = [['w', 0]].concat(sol.tab.map((_, i) => ['t', i]));
+  for (const [z, i] of srcs) {
+    if (!solArr(z, i).length) continue;
+    const sel = { from: z, i, n: 1 };
+    for (let j = 0; j < 4; j++) if (solCanMove(sel, 'f', j)) { solMoveCore(sel, 'f', j); return 'found'; }
+  }
+  if (sol.stock.length) { const c = sol.stock.pop(); c.up = true; sol.waste.push(c); return 'draw'; }
+  if (sol.waste.length) { sol.stock = sol.waste.reverse(); sol.waste = []; sol.stock.forEach(c => c.up = false); return 'draw'; }
+  return false;
+}
+
+// Joue les coups vers les fondations (en piochant carte par carte) ; renvoie true si la donne se termine.
+function solAutoRun(onStep) {
+  let idle = 0;
+  while (!sol.won) {
+    const r = solAutoStep();
+    if (!r) return false;
+    idle = r === 'draw' ? idle + 1 : 0;
+    if (idle > sol.stock.length + sol.waste.length + 2) return false;
+    if (onStep) onStep();
+  }
+  return true;
+}
+
+function solMaybeAuto() {
+  if (sol.won || solAuto) return;
+  if (!sol.tab.every(col => col.every(c => c.up))) return;
+  const snap = JSON.stringify(sol);
+  const ok = solAutoRun();                   // simulation : la donne est-elle gagnable sans autre coup ?
+  sol = JSON.parse(snap);
+  if (!ok) return;
+  solPush();
+  solAuto = true; solSel = null;
+  const b = document.getElementById('solBanner');
+  b.className = 'banner win'; b.textContent = 'Complétion automatique…';
+  solTimer = setInterval(() => {
+    const board = document.getElementById('solBoard');
+    const r = !board || sol.won ? false : solAutoStep();
+    if (r === 'found') { sol.moves++; if (sol.found.every(p => p.length === 13)) sol.won = true; }
+    if (board) solRender();
+    if (!r || sol.won) { clearInterval(solTimer); solAuto = false; if (board && !sol.won) b.className = 'banner'; }
+  }, 70);
+}
+
+// Arrête tout ce qui tourne en arrière-plan (complétion auto, glisser en cours)
+function solStop() {
+  clearInterval(solTimer); solTimer = null; solAuto = false;
+  document.removeEventListener('pointermove', solPointerMove);
+  document.removeEventListener('pointerup', solPointerUp);
+  document.removeEventListener('pointercancel', solPointerUp);
+  solDrag = null;
+}
+
+function solUpdate() { solRender(); solMaybeAuto(); }
+
+let solDrag = null, solNoClick = false;
+
+function solPointerDown(e) {
+  if (e.button !== 0 || sol.won || solDrag || solAuto) return;
+  const el = e.target.closest('.sol-card[data-zone]');
+  if (!el) return;
+  const z = el.dataset.zone, i = +el.dataset.i;
+  const idx = el.dataset.idx === undefined ? -1 : +el.dataset.idx;
+  if (z === 's') return;
+  const arr = solArr(z, i);
+  let sel = null;
+  if (z === 'w' && arr.length) sel = { from: 'w', i: 0, n: 1 };
+  else if (z === 'f' && arr.length) sel = { from: 'f', i, n: 1 };
+  else if (z === 't' && idx >= 0 && arr[idx].up) sel = { from: 't', i, n: arr.length - idx };
+  if (!sel) return;
+  const els = z === 't'
+    ? [...document.querySelectorAll('.sol-card[data-zone="t"][data-i="' + i + '"]')].filter(c => +c.dataset.idx >= idx)
+    : [el];
+  solDrag = { sel, els, x0: e.clientX, y0: e.clientY, active: false, ghost: null, ox: 0, oy: 0 };
+  document.addEventListener('pointermove', solPointerMove);
+  document.addEventListener('pointerup', solPointerUp);
+  document.addEventListener('pointercancel', solPointerUp);
+}
+
+function solDragStart() {
+  const d = solDrag, board = document.getElementById('solBoard');
+  const br = board.getBoundingClientRect(), fr = d.els[0].getBoundingClientRect();
+  d.ox = d.x0 - fr.left; d.oy = d.y0 - fr.top; d.br = br;
+  const ghost = document.createElement('div');
+  ghost.className = 'sol-ghost';
+  ghost.style.width = fr.width + 'px';
+  d.els.forEach(el => {
+    const r = el.getBoundingClientRect(), c = el.cloneNode(true);
+    c.classList.remove('sel');
+    c.style.left = '0'; c.style.top = (r.top - fr.top) + 'px';
+    c.style.width = r.width + 'px'; c.style.height = r.height + 'px';
+    c.style.fontSize = getComputedStyle(el).fontSize;
+    ghost.appendChild(c);
+    el.style.opacity = '0.25';
+  });
+  board.appendChild(ghost);
+  d.ghost = ghost; d.active = true;
+  solSel = null;
+  document.querySelectorAll('.sol-slot[data-zone="t"], .sol-slot[data-zone="f"]').forEach(sl => {
+    if (solCanMove(d.sel, sl.dataset.zone, +sl.dataset.i)) sl.classList.add('drop');
+  });
+}
+
+function solPointerMove(e) {
+  const d = solDrag;
+  if (!d) return;
+  if (!d.active) {
+    if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 6) return;
+    solDragStart();
+  }
+  e.preventDefault();
+  d.ghost.style.left = (e.clientX - d.ox - d.br.left) + 'px';
+  d.ghost.style.top  = (e.clientY - d.oy - d.br.top) + 'px';
+}
+
+function solPointerUp(e) {
+  const d = solDrag;
+  document.removeEventListener('pointermove', solPointerMove);
+  document.removeEventListener('pointerup', solPointerUp);
+  document.removeEventListener('pointercancel', solPointerUp);
+  solDrag = null;
+  if (!d || !d.active) return;
+  solNoClick = true; setTimeout(() => { solNoClick = false; }, 100);
+  let moved = false;
+  if (e.type === 'pointerup') {
+    // cible : sous le pointeur, sinon sous le centre de la carte tirée
+    const gr = d.ghost.firstChild.getBoundingClientRect();
+    const pts = [[e.clientX, e.clientY], [gr.left + gr.width / 2, gr.top + gr.height / 2]];
+    for (const [x, y] of pts) {
+      const t = document.elementFromPoint(x, y), tz = t && t.closest('[data-zone]');
+      if (!tz) continue;
+      const z = tz.dataset.zone, i = +tz.dataset.i;
+      if ((z === 't' || z === 'f') && solCanMove(d.sel, z, i)) { solDoMove(d.sel, z, i); moved = true; break; }
+    }
+  }
+  d.ghost.remove();
+  solSel = null;
+  solUpdate();
+}
+
 function solClick(e) {
+  if (solNoClick || solAuto) return;
   const el = e.target.closest('[data-zone]');
   if (!el || sol.won) return;
   const z = el.dataset.zone, i = +el.dataset.i;
   const idx = el.dataset.idx === undefined ? -1 : +el.dataset.idx;
-  if (z === 's') { solSel = null; solStock(); solRender(); return; }
+  if (z === 's') { solSel = null; solStock(); solUpdate(); return; }
 
   // double clic / double tap : vers les fondations
   const key = z + i + '_' + idx, now = Date.now();
-  const dbl = idx >= 0 && solLast.k === key && now - solLast.t < 350;
+  const dbl = (idx >= 0 || z === 'w') && solLast.k === key && now - solLast.t < 350;
   solLast = { k: key, t: now };
-  if (dbl) { solSel = null; solAutoFound(z, i, idx); solRender(); return; }
+  if (dbl) { solSel = null; solAutoMove(z, i, idx); solUpdate(); return; }
 
   if (solSel) {
     const s = solSel; solSel = null;
     const src = solArr(s.from, s.i);
     if (s.from === z && s.i === i && (z !== 't' || idx === src.length - s.n)) { solRender(); return; }  // même carte : désélection
-    if ((z === 't' || z === 'f') && solCanMove(s, z, i)) { solDoMove(s, z, i); solRender(); return; }
+    if ((z === 't' || z === 'f') && solCanMove(s, z, i)) { solDoMove(s, z, i); solUpdate(); return; }
   }
 
   // sélection
@@ -1247,7 +1397,7 @@ function solClick(e) {
     if (arr[idx].up) solSel = { from: 't', i, n: arr.length - idx };
     else if (idx === arr.length - 1) { solPush(); arr[idx].up = true; sol.moves++; }
   }
-  solRender();
+  solUpdate();
 }
 
 function solCardEl(c, z, i, idx, top, sel) {
