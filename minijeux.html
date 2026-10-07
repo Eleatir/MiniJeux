@@ -219,6 +219,62 @@
     font-size: 13px; color: var(--text2);
     min-height: 20px; margin-bottom: 4px;
   }
+
+  /* ── 2048 ─────────────────────────────────── */
+  .tf-board {
+    container-type: inline-size;
+    width: 100%; max-width: 400px; aspect-ratio: 1;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.5cqw;
+    padding: 2.5cqw; border-radius: var(--radius-lg);
+    background: var(--surface2); border: 0.5px solid var(--border2);
+    touch-action: none; user-select: none;
+  }
+  .tf-cell {
+    border-radius: var(--radius); background: var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9cqw; font-weight: 600; color: #3c3a32;
+  }
+  .tf-cell.pop { animation: tfpop 0.15s ease-out; }
+  @keyframes tfpop { from { transform: scale(0.5); } to { transform: scale(1); } }
+  .tf-2    { background:#eee4da; }
+  .tf-4    { background:#ede0c8; }
+  .tf-8    { background:#f2b179; color:#fff; }
+  .tf-16   { background:#f59563; color:#fff; }
+  .tf-32   { background:#f67c5f; color:#fff; }
+  .tf-64   { background:#f65e3b; color:#fff; }
+  .tf-128  { background:#edcf72; color:#fff; font-size: 7.5cqw; }
+  .tf-256  { background:#edcc61; color:#fff; font-size: 7.5cqw; }
+  .tf-512  { background:#edc850; color:#fff; font-size: 7.5cqw; }
+  .tf-1024 { background:#edc53f; color:#fff; font-size: 6cqw; }
+  .tf-2048 { background:#edc22e; color:#fff; font-size: 6cqw; }
+  .tf-big  { background:#3c3a32; color:#fff; font-size: 5cqw; }
+  .banner .btn { margin-left: 10px; }
+
+  /* ── SOLITAIRE ────────────────────────────── */
+  .sol-board { container-type: inline-size; width: 100%; max-width: 720px; user-select: none; }
+  .sol-top, .sol-tab { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1.4cqw; }
+  .sol-top { margin-bottom: 3cqw; }
+  .sol-slot {
+    position: relative; aspect-ratio: 5 / 7;
+    border: 1px dashed var(--border2); border-radius: 1.2cqw;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text3); font-size: 4cqw;
+  }
+  .sol-card {
+    position: absolute; left: 0; top: 0; width: 100%; aspect-ratio: 5 / 7;
+    border-radius: 1.2cqw; background: #fff; color: #1a1a18;
+    border: 1px solid rgba(0,0,0,0.3); font-weight: 500; cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15); font-size: 3.3cqw; overflow: hidden;
+  }
+  .sol-card.red { color: #a32d2d; }
+  .sol-card.back {
+    background: repeating-linear-gradient(45deg, #185fa5 0 5px, #1f6fb8 5px 10px);
+    color: transparent; border-color: #0c447c;
+  }
+  .sol-card.sel { outline: 3px solid #e0a000; outline-offset: -2px; z-index: 5; }
+  .sol-corner { position: absolute; top: 0.7cqw; left: 1cqw; line-height: 1.05; }
+  .sol-big { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 6.5cqw; padding-top: 2.5cqw; }
+  .sol-tab { align-items: start; }
 </style>
 </head>
 <body>
@@ -246,17 +302,17 @@
       <p class="card-desc">Mange, grandis, ne te mords pas</p>
       <span class="badge ready">✓ disponible</span>
     </div>
-    <div class="card locked">
+    <div class="card ready" role="button" tabindex="0" onclick="startGame('2048')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('2048')}">
       <span class="card-icon">🧩</span>
       <span class="card-name">2048</span>
       <p class="card-desc">Fusionne les tuiles, atteins 2048</p>
-      <span class="badge soon">à venir</span>
+      <span class="badge ready">✓ disponible</span>
     </div>
-    <div class="card locked">
+    <div class="card ready" role="button" tabindex="0" onclick="startGame('solitaire')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('solitaire')}">
       <span class="card-icon">🃏</span>
       <span class="card-name">Solitaire</span>
       <p class="card-desc">Le classique indémodable</p>
-      <span class="badge soon">à venir</span>
+      <span class="badge ready">✓ disponible</span>
     </div>
   </div>
 </div>
@@ -323,6 +379,44 @@
   <p class="hint" style="margin-top:8px;">Flèches directionnelles ou Z Q S D &nbsp;·&nbsp; Le serpent traverse les murs</p>
 </template>
 
+<!-- ══ TEMPLATE 2048 ═════════════════════════════════════════════════ -->
+<template id="tpl-2048">
+  <div class="ms-header">
+    <span class="ms-title">🧩 2048</span>
+    <div class="ms-controls">
+      <button class="btn" id="tfReset">Nouvelle partie</button>
+    </div>
+  </div>
+  <div class="ms-stats">
+    <span>Score : <strong id="tfScore">0</strong></span>
+    <span>Meilleur : <strong id="tfBest">0</strong></span>
+  </div>
+  <div class="tf-board" id="tfBoard"></div>
+  <div class="banner" id="tfBanner"></div>
+  <p class="hint">Flèches, Z Q S D ou swipe &nbsp;·&nbsp; Deux tuiles identiques fusionnent</p>
+</template>
+
+<!-- ══ TEMPLATE SOLITAIRE ════════════════════════════════════════════ -->
+<template id="tpl-solitaire">
+  <div class="ms-header">
+    <span class="ms-title">🃏 Solitaire</span>
+    <div class="ms-controls">
+      <select id="solDraw">
+        <option value="1" selected>Pioche : 1 carte</option>
+        <option value="3">Pioche : 3 cartes</option>
+      </select>
+      <button class="btn" id="solUndo">Annuler</button>
+      <button class="btn" id="solReset">Nouvelle donne</button>
+    </div>
+  </div>
+  <div class="ms-stats">
+    <span>Coups : <strong id="solMoves">0</strong></span>
+  </div>
+  <div class="sol-board" id="solBoard"></div>
+  <div class="banner" id="solBanner"></div>
+  <p class="hint">Clique une carte puis sa destination &nbsp;·&nbsp; Double-clic = vers les fondations &nbsp;·&nbsp; Roi sur colonne vide</p>
+</template>
+
 <!-- ══ TEMPLATE WORDLE ═══════════════════════════════════════════════ -->
 <template id="tpl-wordle">
   <div class="wd-header">
@@ -361,6 +455,12 @@ function startGame(id) {
     document.getElementById('snReset').addEventListener('click', () => { if(document.activeElement) document.activeElement.blur(); initSnake(); });
     document.getElementById('snDiff').addEventListener('change', () => { if(document.activeElement) document.activeElement.blur(); initSnake(); });
   }
+  if (id === '2048') {
+    document.removeEventListener('keydown', tfKeyHandler);
+    document.addEventListener('keydown', tfKeyHandler);
+    initTf();
+  }
+  if (id === 'solitaire') initSolitaire();
   if (id === 'wordle') {
     document.removeEventListener('keydown', wdKeyHandler);
     document.addEventListener('keydown', wdKeyHandler);
@@ -375,6 +475,7 @@ function goMenu() {
   snStop();
   document.removeEventListener('keydown', snKeyHandler);
   document.removeEventListener('keydown', wdKeyHandler);
+  document.removeEventListener('keydown', tfKeyHandler);
   document.getElementById('game-shell').style.display = 'none';
   document.getElementById('menu').style.display = 'block';
 }
@@ -893,6 +994,339 @@ function snDraw() {
     ctx.roundRect(s.x*cw+pad, s.y*ch+pad, cw-pad*2, ch-pad*2, 3);
     ctx.fill();
   });
+}
+
+/* ════════════════════════════════════════════
+   2048
+════════════════════════════════════════════ */
+const TF_N = 4;
+let tfBoard, tfScore, tfBest = 0, tfOver, tfPaused, tfKeep, tfNew = -1;
+try { tfBest = parseInt(localStorage.getItem('tfBest')) || 0; } catch (e) {}
+
+function tfKeyHandler(e) {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const map = {
+    ArrowUp:'U', ArrowDown:'D', ArrowLeft:'L', ArrowRight:'R',
+    z:'U', Z:'U', s:'D', S:'D', q:'L', Q:'L', d:'R', D:'R'
+  };
+  const dir = map[e.key];
+  if (!dir) return;
+  e.preventDefault();
+  tfMove(dir);
+}
+
+function initTf() {
+  tfBoard = Array.from({ length: TF_N }, () => Array(TF_N).fill(0));
+  tfScore = 0; tfOver = false; tfPaused = false; tfKeep = false; tfNew = -1;
+  tfAdd(); tfAdd();
+  const b = document.getElementById('tfBanner');
+  b.className = 'banner'; b.textContent = '';
+  document.getElementById('tfReset').onclick = () => { document.activeElement.blur(); initTf(); };
+  tfInitTouch();
+  tfRender();
+}
+
+function tfInitTouch() {
+  const el = document.getElementById('tfBoard');
+  let t0 = null;
+  el.addEventListener('touchstart', e => { t0 = e.touches[0]; e.preventDefault(); }, { passive:false });
+  el.addEventListener('touchend', e => {
+    if (!t0) return;
+    const t = e.changedTouches[0], dx = t.clientX - t0.clientX, dy = t.clientY - t0.clientY;
+    t0 = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
+    tfMove(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U'));
+    e.preventDefault();
+  }, { passive:false });
+}
+
+function tfAdd() {
+  const empty = [];
+  for (let r = 0; r < TF_N; r++) for (let c = 0; c < TF_N; c++) if (!tfBoard[r][c]) empty.push([r, c]);
+  if (!empty.length) return;
+  const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+  tfBoard[r][c] = Math.random() < 0.9 ? 2 : 4;
+  tfNew = r * TF_N + c;
+}
+
+function tfSlide(line) {
+  const a = line.filter(v => v);
+  let gain = 0;
+  for (let i = 0; i < a.length - 1; i++) {
+    if (a[i] === a[i + 1]) { a[i] *= 2; gain += a[i]; a.splice(i + 1, 1); }
+  }
+  while (a.length < line.length) a.push(0);
+  return { line: a, gain, moved: a.some((v, i) => v !== line[i]) };
+}
+
+function tfMove(dir) {
+  if (tfOver || tfPaused || !document.getElementById('tfBoard')) return;
+  let moved = false, gain = 0;
+  for (let k = 0; k < TF_N; k++) {
+    const coords = [];
+    for (let t = 0; t < TF_N; t++) {
+      coords.push(dir === 'L' ? [k, t] : dir === 'R' ? [k, TF_N - 1 - t] : dir === 'U' ? [t, k] : [TF_N - 1 - t, k]);
+    }
+    const res = tfSlide(coords.map(([r, c]) => tfBoard[r][c]));
+    res.line.forEach((v, t) => { const [r, c] = coords[t]; tfBoard[r][c] = v; });
+    if (res.moved) moved = true;
+    gain += res.gain;
+  }
+  if (!moved) return;
+  tfScore += gain;
+  if (tfScore > tfBest) {
+    tfBest = tfScore;
+    try { localStorage.setItem('tfBest', tfBest); } catch (e) {}
+  }
+  tfAdd();
+  tfRender();
+  const banner = document.getElementById('tfBanner');
+  if (!tfKeep && tfBoard.flat().includes(2048)) {
+    tfPaused = true;
+    banner.className = 'banner win';
+    banner.innerHTML = 'Bravo, tu as atteint 2048 ! <button class="btn" id="tfContinue">Continuer</button>';
+    document.getElementById('tfContinue').onclick = () => {
+      tfKeep = true; tfPaused = false; banner.className = 'banner'; banner.textContent = '';
+      document.activeElement.blur();
+    };
+  } else if (!tfCanMove()) {
+    tfOver = true;
+    banner.className = 'banner lose';
+    banner.textContent = 'Plus de mouvement possible. Score : ' + tfScore;
+  }
+}
+
+function tfCanMove() {
+  for (let r = 0; r < TF_N; r++) for (let c = 0; c < TF_N; c++) {
+    if (!tfBoard[r][c]) return true;
+    if (c + 1 < TF_N && tfBoard[r][c] === tfBoard[r][c + 1]) return true;
+    if (r + 1 < TF_N && tfBoard[r][c] === tfBoard[r + 1][c]) return true;
+  }
+  return false;
+}
+
+function tfRender() {
+  const g = document.getElementById('tfBoard');
+  g.innerHTML = '';
+  tfBoard.flat().forEach((v, i) => {
+    const d = document.createElement('div');
+    d.className = 'tf-cell' + (v ? ' ' + (v <= 2048 ? 'tf-' + v : 'tf-big') : '') + (i === tfNew ? ' pop' : '');
+    d.textContent = v || '';
+    g.appendChild(d);
+  });
+  document.getElementById('tfScore').textContent = tfScore;
+  document.getElementById('tfBest').textContent = tfBest;
+}
+
+/* ════════════════════════════════════════════
+   SOLITAIRE (Klondike)
+════════════════════════════════════════════ */
+const SOL_SUITS = ['♠', '♥', '♦', '♣'];
+const SOL_RANKS = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const SOL_UP = 5.4, SOL_DOWN = 2.2;   // décalages en cqw
+let sol, solSel = null, solHist = [], solLast = { k: '', t: 0 };
+
+const solRed = c => c.s === 1 || c.s === 2;
+
+function initSolitaire() {
+  const deck = [];
+  for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) deck.push({ s, r, up: false });
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  sol = { stock: [], waste: [], found: [[], [], [], []], tab: [], moves: 0, won: false };
+  for (let i = 0; i < 7; i++) {
+    const col = deck.splice(0, i + 1);
+    col[col.length - 1].up = true;
+    sol.tab.push(col);
+  }
+  sol.stock = deck;
+  solSel = null; solHist = []; solLast = { k: '', t: 0 };
+  const b = document.getElementById('solBanner');
+  b.className = 'banner'; b.textContent = '';
+  const board = document.getElementById('solBoard');
+  board.onclick = solClick;
+  document.getElementById('solReset').onclick = () => { document.activeElement.blur(); initSolitaire(); };
+  document.getElementById('solDraw').onchange = () => { document.activeElement.blur(); initSolitaire(); };
+  document.getElementById('solUndo').onclick = () => { document.activeElement.blur(); solUndo(); };
+  solRender();
+}
+
+function solPush() {
+  solHist.push(JSON.stringify(sol));
+  if (solHist.length > 300) solHist.shift();
+}
+
+function solUndo() {
+  if (!solHist.length) return;
+  sol = JSON.parse(solHist.pop());
+  solSel = null;
+  document.getElementById('solBanner').className = 'banner';
+  solRender();
+}
+
+function solArr(z, i) { return z === 'w' ? sol.waste : z === 't' ? sol.tab[i] : sol.found[i]; }
+
+function solStock() {
+  solPush();
+  const n = parseInt(document.getElementById('solDraw').value);
+  if (sol.stock.length) {
+    for (let k = 0; k < n && sol.stock.length; k++) {
+      const c = sol.stock.pop(); c.up = true; sol.waste.push(c);
+    }
+  } else if (sol.waste.length) {
+    sol.stock = sol.waste.reverse(); sol.waste = [];
+    sol.stock.forEach(c => c.up = false);
+  } else { solHist.pop(); return; }
+  sol.moves++;
+}
+
+function solCanMove(sel, to, j) {
+  const src = solArr(sel.from, sel.i);
+  const card = src[src.length - sel.n];
+  if (to === 'f') {
+    if (sel.n !== 1) return false;
+    const pile = sol.found[j], top = pile[pile.length - 1];
+    return top ? top.s === card.s && card.r === top.r + 1 : card.r === 1;
+  }
+  if (to === 't') {
+    if (sel.from === 't' && sel.i === j) return false;
+    const pile = sol.tab[j], top = pile[pile.length - 1];
+    if (!top) return card.r === 13;
+    return top.up && solRed(top) !== solRed(card) && top.r === card.r + 1;
+  }
+  return false;
+}
+
+function solDoMove(sel, to, j) {
+  solPush();
+  const src = solArr(sel.from, sel.i);
+  const moving = src.splice(src.length - sel.n, sel.n);
+  (to === 'f' ? sol.found[j] : sol.tab[j]).push(...moving);
+  if (sel.from === 't' && src.length && !src[src.length - 1].up) src[src.length - 1].up = true;
+  sol.moves++;
+  if (sol.found.every(p => p.length === 13)) sol.won = true;
+}
+
+function solAutoFound(z, i, idx) {
+  const src = solArr(z, i);
+  if (z === 'f' || idx !== src.length - 1 || !src[idx].up) return false;
+  for (let j = 0; j < 4; j++) {
+    const sel = { from: z, i, n: 1 };
+    if (solCanMove(sel, 'f', j)) { solDoMove(sel, 'f', j); return true; }
+  }
+  return false;
+}
+
+function solClick(e) {
+  const el = e.target.closest('[data-zone]');
+  if (!el || sol.won) return;
+  const z = el.dataset.zone, i = +el.dataset.i;
+  const idx = el.dataset.idx === undefined ? -1 : +el.dataset.idx;
+  if (z === 's') { solSel = null; solStock(); solRender(); return; }
+
+  // double clic / double tap : vers les fondations
+  const key = z + i + '_' + idx, now = Date.now();
+  const dbl = idx >= 0 && solLast.k === key && now - solLast.t < 350;
+  solLast = { k: key, t: now };
+  if (dbl) { solSel = null; solAutoFound(z, i, idx); solRender(); return; }
+
+  if (solSel) {
+    const s = solSel; solSel = null;
+    const src = solArr(s.from, s.i);
+    if (s.from === z && s.i === i && (z !== 't' || idx === src.length - s.n)) { solRender(); return; }  // même carte : désélection
+    if ((z === 't' || z === 'f') && solCanMove(s, z, i)) { solDoMove(s, z, i); solRender(); return; }
+  }
+
+  // sélection
+  const arr = solArr(z, i);
+  if (z === 'w' && arr.length) solSel = { from: 'w', i: 0, n: 1 };
+  else if (z === 'f' && arr.length) solSel = { from: 'f', i, n: 1 };
+  else if (z === 't' && idx >= 0) {
+    if (arr[idx].up) solSel = { from: 't', i, n: arr.length - idx };
+    else if (idx === arr.length - 1) { solPush(); arr[idx].up = true; sol.moves++; }
+  }
+  solRender();
+}
+
+function solCardEl(c, z, i, idx, top, sel) {
+  const d = document.createElement('div');
+  d.className = 'sol-card' + (c.up ? (solRed(c) ? ' red' : '') : ' back') + (sel ? ' sel' : '');
+  d.dataset.zone = z; d.dataset.i = i; if (idx >= 0) d.dataset.idx = idx;
+  d.style.top = top + 'cqw';
+  if (c.up) {
+    d.innerHTML = '<span class="sol-corner">' + SOL_RANKS[c.r] + '<br>' + SOL_SUITS[c.s] + '</span>' +
+                  '<span class="sol-big">' + SOL_SUITS[c.s] + '</span>';
+  }
+  return d;
+}
+
+function solSlot(z, i, label) {
+  const d = document.createElement('div');
+  d.className = 'sol-slot'; d.dataset.zone = z; d.dataset.i = i;
+  if (label) d.textContent = label;
+  return d;
+}
+
+function solRender() {
+  const board = document.getElementById('solBoard');
+  board.innerHTML = '';
+  const top = document.createElement('div'); top.className = 'sol-top';
+
+  // pioche
+  const stock = solSlot('s', 0, sol.stock.length ? '' : '↻');
+  if (sol.stock.length) stock.appendChild(solCardEl({ up: false, s: 0, r: 1 }, 's', 0, -1, 0, false));
+  top.appendChild(stock);
+
+  // défausse (jusqu'à 3 cartes visibles en éventail)
+  const waste = solSlot('w', 0);
+  const n = parseInt(document.getElementById('solDraw').value);
+  const shown = sol.waste.slice(-(n === 3 ? 3 : 1));
+  shown.forEach((c, k) => {
+    const isTop = k === shown.length - 1;
+    const el = solCardEl(c, 'w', 0, -1, 0, isTop && solSel && solSel.from === 'w');
+    el.style.left = (k * 4) + 'cqw'; el.style.width = '100%';
+    if (!isTop) el.style.pointerEvents = 'none';
+    waste.appendChild(el);
+  });
+  top.appendChild(waste);
+  top.appendChild(document.createElement('div'));
+
+  // fondations
+  sol.found.forEach((pile, j) => {
+    const slot = solSlot('f', j, pile.length ? '' : SOL_SUITS[j]);
+    if (pile.length) {
+      slot.appendChild(solCardEl(pile[pile.length - 1], 'f', j, -1, 0, solSel && solSel.from === 'f' && solSel.i === j));
+    }
+    top.appendChild(slot);
+  });
+  board.appendChild(top);
+
+  // colonnes
+  const tab = document.createElement('div'); tab.className = 'sol-tab';
+  let maxOff = 0;
+  sol.tab.forEach((col, i) => {
+    const slot = solSlot('t', i);
+    let off = 0;
+    col.forEach((c, k) => {
+      const selected = solSel && solSel.from === 't' && solSel.i === i && k >= col.length - solSel.n;
+      slot.appendChild(solCardEl(c, 't', i, k, off, selected));
+      off += c.up ? SOL_UP : SOL_DOWN;
+    });
+    maxOff = Math.max(maxOff, off - (col.length && col[col.length - 1].up ? SOL_UP : SOL_DOWN));
+    tab.appendChild(slot);
+  });
+  tab.style.paddingBottom = (maxOff + 2) + 'cqw';
+  board.appendChild(tab);
+
+  document.getElementById('solMoves').textContent = sol.moves;
+  document.getElementById('solUndo').disabled = !solHist.length;
+  if (sol.won) {
+    const b = document.getElementById('solBanner');
+    b.className = 'banner win';
+    b.textContent = 'Bravo, tu as gagné en ' + sol.moves + ' coups !';
+  }
 }
 
 </script>
