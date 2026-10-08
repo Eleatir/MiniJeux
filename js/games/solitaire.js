@@ -9,22 +9,27 @@ let solElapsed = 0, solClock = null, solFlight = null;
 
 const solRed = c => c.s === 1 || c.s === 2;
 
-function initSolitaire(saved) {
-  solStop();
+// Nouvelle donne : 52 cartes mélangées, 7 colonnes de 1 à 7 cartes (la dernière visible), le reste en pioche
+function solDeal(draw) {
   const deck = [];
   for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) deck.push({ s, r, up: false });
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [deck[i], deck[j]] = [deck[j], deck[i]];
   }
-  sol = { stock: [], waste: [], found: [[], [], [], []], tab: [], moves: 0, won: false,
-          draw: parseInt(document.getElementById('solDraw').value) };   // mode de pioche figé pour toute la donne
+  const game = { stock: [], waste: [], found: [[], [], [], []], tab: [], moves: 0, won: false, draw };
   for (let i = 0; i < 7; i++) {
     const col = deck.splice(0, i + 1);
     col[col.length - 1].up = true;
-    sol.tab.push(col);
+    game.tab.push(col);
   }
-  sol.stock = deck;
+  game.stock = deck;
+  return game;
+}
+
+function initSolitaire(saved) {
+  solStop();
+  sol = solDeal(parseInt(document.getElementById('solDraw').value));   // mode de pioche figé pour toute la donne
   solSel = null; solHist = []; solLast = { k: '', t: 0 }; solAuto = false;
   solElapsed = 0;
   if (saved) {   // reprise : donne, annulations possibles et chrono

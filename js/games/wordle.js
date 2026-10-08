@@ -58,6 +58,27 @@ function wdDelete() {
   wdRenderGrid();
 }
 
+// Couleur de chaque lettre d'un essai : 'correct' (bien placée), 'present' (ailleurs dans le mot), 'absent'.
+// Les doublons sont comptés : une lettre n'est « présente » que tant qu'il en reste dans le mot à deviner.
+function wdEvaluate(guess, normTarget) {
+  const n = normTarget.length;
+  const result = Array(n).fill('absent');
+  const left = {};   // lettres de la cible pas encore « utilisées »
+  for (const ch of normTarget) left[ch] = (left[ch] || 0) + 1;
+  // passe 1 : lettres bien placées
+  for (let i = 0; i < n; i++) {
+    const g = normalize(guess[i]);
+    if (g === normTarget[i]) { result[i] = 'correct'; left[g]--; }
+  }
+  // passe 2 : lettres présentes ailleurs
+  for (let i = 0; i < n; i++) {
+    if (result[i] === 'correct') continue;
+    const g = normalize(guess[i]);
+    if (left[g] > 0) { result[i] = 'present'; left[g]--; }
+  }
+  return result;
+}
+
 function wdSubmit() {
   if (wdOver || wdBusy) return;
   if (wdCurrentCol < wdLen) { wdMsg('Mot trop court !'); wdShake(); Sfx.play('bad'); return; }
@@ -65,22 +86,7 @@ function wdSubmit() {
   const normGuess = normalize(guess);
   if (!WD_DICT[wdLen].has(normGuess)) { wdMsg('Ce mot n\'est pas dans le dictionnaire'); wdShake(); Sfx.play('bad'); return; }
 
-  // Calcul des couleurs
-  const result  = Array(wdLen).fill('absent');
-  const tCount  = {};
-  for (const ch of wdNormTarget) tCount[ch] = (tCount[ch]||0) + 1;
-
-  // Passe 1 : corrects
-  for (let i=0;i<wdLen;i++) {
-    const g = normalize(guess[i]);
-    if (g === wdNormTarget[i]) { result[i]='correct'; tCount[g]--; }
-  }
-  // Passe 2 : présents
-  for (let i=0;i<wdLen;i++) {
-    if (result[i]==='correct') continue;
-    const g = normalize(guess[i]);
-    if (tCount[g] > 0) { result[i]='present'; tCount[g]--; }
-  }
+  const result = wdEvaluate(guess, wdNormTarget);
 
   // Stocke le résultat sur la ligne ; les couleurs apparaissent lettre par lettre (révélation)
   const row = wdCurrentRow, tok = wdToken;
