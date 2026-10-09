@@ -2,7 +2,7 @@
    SCORES  (tableaux locaux, saisie du nom façon borne d'arcade)
 ════════════════════════════════════════════ */
 const SC_KEY = 'minijeux.scores.v1', SC_NAME_KEY = 'minijeux.name', SC_MAX = 10;
-const SC_ORDER = ['wordle', 'minesweeper', 'snake', 'sudoku', 'solitaire'];
+const SC_ORDER = ['wordle', 'minesweeper', 'snake', 'sudoku', 'mots', 'solitaire'];
 const SC_GAMES = {
   wordle:      { icon:'🟩', label:'Wordle',   dir:'asc',  modes:{ 5:'5 lettres', 6:'6 lettres', 7:'7 lettres' },
                  fmt: v => Math.floor(v / 1000) + (v < 2000 ? ' essai' : ' essais') + ' · ' + (v % 1000) + ' s' },
@@ -11,6 +11,8 @@ const SC_GAMES = {
   snake:       { icon:'🐍', label:'Snake',    dir:'desc', modes:{ slow:'Facile', medium:'Moyen', fast:'Difficile' },
                  fmt: v => v + ' pts' },
   sudoku:      { icon:'🔢', label:'Sudoku',   dir:'asc',  modes:{ easy:'Facile', medium:'Moyen', hard:'Difficile' },
+                 fmt: v => Math.floor(v / 60) + ':' + String(v % 60).padStart(2, '0') },
+  mots:        { icon:'🔤', label:'Mots fléchés', dir:'asc', modes:{ small:'Petite', medium:'Moyenne', large:'Grande' },
                  fmt: v => Math.floor(v / 60) + ':' + String(v % 60).padStart(2, '0') },
   solitaire:   { icon:'🃏', label:'Solitaire', dir:'asc', modes:{ 1:'Pioche 1', 3:'Pioche 3' },
                  fmt: v => v + ' coups' }
@@ -208,7 +210,7 @@ function scShow(g, m, hi) {
     h += '<div class="sc-modes sc-scope">' + [['me', '👤 Moi'], ['all', '🌍 Tous']].map(([k, t]) =>
       '<button class="sc-mode' + (k === st.s ? ' on' : '') + '" data-s="' + k + '">' + t + '</button>').join('') + '</div>';
     h += '<div class="sc-tabs">' + SC_ORDER.map(k =>
-      '<button class="sc-tab' + (k === st.g ? ' on' : '') + '" data-g="' + k + '">' + SC_GAMES[k].icon + ' ' + SC_GAMES[k].label + '</button>').join('') + '</div>';
+      '<button class="sc-tab' + (k === st.g ? ' on' : '') + '" data-g="' + k + '">' + SC_GAMES[k].icon + '<span class="tl"> ' + SC_GAMES[k].label + '</span></button>').join('') + '</div>';
     h += '<div class="sc-modes">' + Object.keys(cfg.modes).map(k =>
       '<button class="sc-mode' + (k === st.m ? ' on' : '') + '" data-m="' + k + '">' + cfg.modes[k] + '</button>').join('') + '</div>';
     h += '<div class="sc-table">';

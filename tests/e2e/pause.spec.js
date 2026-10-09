@@ -5,7 +5,7 @@ const pauseBtn = page => page.locator('#pauseBtn');
 
 test('le bouton ⏸ est présent dans chaque jeu, avec un voile « Reprendre » qui cache la grille', async ({ page }) => {
   await page.goto('/');
-  for (const game of ['Wordle', 'Démineur', 'Snake', 'Sudoku', 'Solitaire']) {
+  for (const game of ['Wordle', 'Démineur', 'Snake', 'Sudoku', 'Mots fléchés', 'Solitaire']) {
     await page.locator('.card', { hasText: game }).click();
     await expect(pauseBtn(page), game).toBeVisible();
     await pauseBtn(page).click();

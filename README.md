@@ -1,14 +1,15 @@
 # Mini-jeux
 
-Cinq petits jeux jouables dans le navigateur, sans installation ni dépendance : Wordle, Démineur, Snake, Sudoku et Solitaire.
+Six petits jeux jouables dans le navigateur, sans installation ni dépendance : Wordle, Démineur, Snake, Sudoku, Mots fléchés et Solitaire.
 
 ## Ce que ça fait
 
 - **Scores d'arcade** : top 10 par jeu et par niveau, nom en 3 lettres, tableau consultable depuis le menu ; export / import en fichier JSON.
-- **Reprise de partie** : Wordle, Démineur, Sudoku et Solitaire reprennent là où on les a laissés (Échap ou « Retour au menu » sauvegarde la partie). Le Snake demande confirmation avant de quitter.
+- **Reprise de partie** : Wordle, Démineur, Sudoku, Mots fléchés et Solitaire reprennent là où on les a laissés (Échap ou « Retour au menu » sauvegarde la partie). Le Snake demande confirmation avant de quitter.
 - **Confort** : Échap revient au menu, confirmation avant d'abandonner une partie, règles dépliables dans chaque jeu (ouvertes la première fois), pause automatique du Snake, Ctrl+Z et N au Solitaire.
 - **Réglages** (⚙) : effets sonores (désactivés par défaut), contraste élevé pour le daltonisme, animations activables/désactivables (la préférence « réduire les animations » du système est respectée).
-- **Ordinateur ou mobile** : l'appareil est détecté automatiquement (pointeur tactile ou navigateur mobile). Sur mobile : commandes tactiles dans chaque jeu (manette et glissement au Snake, appui long ou bouton 🚩 au Démineur, pavé numérique au Sudoku, glisser-déposer et double-tap au Solitaire), grandes zones à toucher, mise en page qui tient sur 320 px. Le réglage ⚙ « Affichage » permet de forcer l'un ou l'autre.
+- **Ordinateur ou mobile** : l'appareil est détecté automatiquement (pointeur tactile ou navigateur mobile). Sur mobile : commandes tactiles dans chaque jeu (manette et glissement au Snake, appui long ou bouton 🚩 au Démineur, pavé numérique au Sudoku, clavier de lettres aux Mots fléchés, glisser-déposer et double-tap au Solitaire), grandes zones à toucher, mise en page qui tient sur 320 px. Le réglage ⚙ « Affichage » permet de forcer l'un ou l'autre.
+- **Mots fléchés** : grilles inventées à chaque partie (3 tailles) à partir de ~800 mots avec définitions (`js/games/mots-words.js`, une ligne `MOT|définition` par mot : facile à enrichir). Aides payantes en secondes : ✔ vérifier +20 s, 💡 lettre +15 s, 💡 mot +45 s.
 - **Pause** (⏸ ou Espace/P) dans tous les jeux : les chronos sont gelés et la grille masquée ; les fenêtres (scores, réglages) mettent la partie en pause toutes seules. Sur mobile, tout tient dans l'écran, sans défilement.
 - **Scores « Moi » et « Tous »** : le tableau montre ses propres scores (sur l'appareil) ou le classement général de tous les joueurs (voir ci-dessous).
 - Les parties et les scores personnels sont gardés dans le navigateur (`localStorage`). Le classement général est facultatif : sans lui, rien n'est envoyé nulle part.
@@ -24,6 +25,8 @@ Cinq petits jeux jouables dans le navigateur, sans installation ni dépendance :
 
 Limite assumée : sans compte, n'importe qui connaissant l'adresse peut envoyer un score avec n'importe quelles initiales. C'est suffisant entre quelques personnes de confiance ; le service refuse déjà les valeurs absurdes. Les scores d'un joueur hors connexion sont renvoyés plus tard.
 
+Quand `server/apps-script.gs` change (par exemple pour un nouveau jeu), colle la nouvelle version dans Apps Script puis **Déployer → Gérer les déploiements → Modifier → Nouvelle version** : l'adresse reste la même.
+
 ## Lancer
 
 Ouvrir `index.html` dans un navigateur (ou servir le dossier avec n'importe quel serveur statique, par exemple GitHub Pages).
@@ -35,11 +38,11 @@ npm install                       # une seule fois (installe Playwright)
 npx playwright install chromium   # une seule fois (télécharge le navigateur de test)
 
 npm run test:unit                 # logique pure, instantané, sans navigateur
-npm run test:e2e                  # un vrai Chromium joue aux cinq jeux (ordinateur, puis téléphone émulé)
+npm run test:e2e                  # un vrai Chromium joue aux six jeux (ordinateur, puis téléphone émulé)
 npm test                          # les deux
 ```
 
-- `tests/unit/` : tests Node (`node --test`, sans aucune dépendance). Les scripts du jeu sont chargés dans un contexte isolé avec un faux navigateur (`helpers.js`) : générateur et solveur du Sudoku (solution unique), règles du Démineur et du Solitaire, calcul des couleurs du Wordle, intégrité des listes de mots et du dictionnaire, scores, import/export, sauvegardes.
+- `tests/unit/` : tests Node (`node --test`, sans aucune dépendance). Les scripts du jeu sont chargés dans un contexte isolé avec un faux navigateur (`helpers.js`) : générateur et solveur du Sudoku (solution unique), générateur de grilles de mots fléchés et intégrité de leur lexique, règles du Démineur et du Solitaire, calcul des couleurs du Wordle, intégrité des listes de mots et du dictionnaire, scores, import/export, sauvegardes.
 - `tests/e2e/` : tests Playwright qui jouent réellement dans Chromium (clavier, souris, glisser-déposer, reprise de partie, scores, réglages). Deux projets : **desktop** (tous les tests) et **mobile** (fichiers `*.mobile.spec.js`, téléphone Pixel 7 émulé : détection de l'appareil, gestes tactiles, mise en page). Chaque test part d'un navigateur vierge et échoue à la moindre erreur dans la console.
 - `PW_CHROMIUM_PATH=/chemin/vers/chrome npm run test:e2e` pour utiliser un Chromium déjà installé.
 - `npm start` sert le jeu sur http://localhost:4173.

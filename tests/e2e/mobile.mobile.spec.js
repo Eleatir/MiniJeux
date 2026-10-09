@@ -49,7 +49,7 @@ async function expectFits(page, label) {
     if (content && content.scrollHeight > content.clientHeight + 1) issues.push('le contenu du jeu est coupé : ' + content.scrollHeight + ' > ' + content.clientHeight);
     const visible = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
     const sel = ['.shell-bar .btn', '.shell-bar .back-btn', '#game-content select', '#game-content .ms-controls .btn', '#game-content .sn-controls .btn',
-      '#game-content .wd-controls .btn', '#wdGrid', '.wd-key', '#msGrid', '#snCanvas', '#sdGrid', '#sdPad .btn', '#sdTools .btn', '#solBoard', '.sol-slot',
+      '#game-content .wd-controls .btn', '#wdGrid', '.wd-key', '#msGrid', '#snCanvas', '#sdGrid', '#sdPad .btn', '#sdTools .btn', '#mfGrid', '.mf-key', '#mfTools .btn', '#mfClue', '#solBoard', '.sol-slot',
       'details.rules summary', '.menu-bar .btn', '.card'];
     for (const q of sel) for (const e of document.querySelectorAll(q)) {
       if (!visible(e)) continue;
@@ -66,11 +66,11 @@ const PHONES = [[320, 568], [360, 640], [375, 667], [390, 844], [412, 915]];
 
 test.describe('mise en page : tout tient dans l\'écran, sans défilement vertical', () => {
   for (const [w, h] of PHONES) {
-    test(`téléphone ${w}×${h} : le menu et les cinq jeux tiennent entièrement`, async ({ page }) => {
+    test(`téléphone ${w}×${h} : le menu et les six jeux tiennent entièrement`, async ({ page }) => {
       await page.setViewportSize({ width: w, height: h });
       await page.goto('/');
       await expectFits(page, 'menu');
-      for (const game of ['Wordle', 'Démineur', 'Snake', 'Sudoku', 'Solitaire']) {
+      for (const game of ['Wordle', 'Démineur', 'Snake', 'Sudoku', 'Mots fléchés', 'Solitaire']) {
         await page.locator('.card', { hasText: game }).tap();
         await page.waitForTimeout(120);
         await expectFits(page, game);
@@ -94,6 +94,12 @@ test.describe('mise en page : tout tient dans l\'écran, sans défilement vertic
     await page.locator('.card', { hasText: 'Sudoku' }).tap();
     await page.selectOption('#sdLevel', 'hard');
     await expectFits(page, 'Sudoku difficile');
+    await page.getByRole('button', { name: /Retour au menu/ }).tap();
+    await page.locator('.card', { hasText: 'Mots fléchés' }).tap();
+    await page.selectOption('#mfLevel', 'large');
+    await expectFits(page, 'Mots fléchés grande grille');
+    const cell = await page.locator('#mfGrid .mf-cell').first().boundingBox();
+    expect(Math.min(cell.width, cell.height), 'cases assez grandes pour être touchées').toBeGreaterThanOrEqual(24);
   });
 
   test('Solitaire : une colonne de 19 cartes se resserre pour tenir à l\'écran', async ({ page }) => {
@@ -356,5 +362,35 @@ test.describe('commandes tactiles', () => {
     await page.getByRole('button', { name: /Retour au menu/ }).tap();
     await page.locator('.card', { hasText: 'Sudoku' }).tap();
     expect(await page.evaluate(() => sd.grid.join(''))).toBe(grid);
+  });
+});
+
+test.describe('Mots fléchés sur téléphone', () => {
+  test('le clavier de lettres écrit dans la grille, ⌫ efface, toucher une définition change de mot', async ({ page }) => {
+    await openGame(page, 'Mots fléchés');
+    await expect(page.locator('.mf-keys')).toBeVisible();
+    const s = await page.evaluate(() => { const sl = mf.slots[mfActive()]; return { first: sl.cells[0], second: sl.cells[1], l: mf.sol[sl.cells[0]] }; });
+    await page.locator(`.mf-key[data-k="${s.l}"]`).tap();
+    await expect(page.locator(`#mfGrid .mf-cell[data-i="${s.first}"]`)).toHaveText(s.l);
+    expect(await page.evaluate(() => mf.sel)).toBe(s.second);
+    await page.locator('.mf-key[data-k="back"]').tap();
+    await expect(page.locator(`#mfGrid .mf-cell[data-i="${s.first}"]`)).toHaveText('');
+    const last = await page.evaluate(() => mf.slots.length - 1);
+    await page.locator(`#mfGrid [data-slot="${last}"]`).tap();
+    expect(await page.evaluate(() => mfActive())).toBe(last);
+    await expect(page.locator('#mfClue')).toContainText('(');
+  });
+
+  test('toucher une case déjà choisie change de sens ; les trois tailles de grille tiennent à l\'écran', async ({ page }) => {
+    await openGame(page, 'Mots fléchés');
+    const cross = await page.evaluate(() => mf.at.findIndex(a => a.h >= 0 && a.v >= 0));
+    await page.locator(`#mfGrid .mf-cell[data-i="${cross}"]`).tap();
+    const d1 = await page.evaluate(() => mf.dir);
+    await page.locator(`#mfGrid .mf-cell[data-i="${cross}"]`).tap();
+    expect(await page.evaluate(() => mf.dir)).not.toBe(d1);
+    for (const level of ['small', 'medium', 'large']) {
+      await page.selectOption('#mfLevel', level);
+      await expectFits(page, 'Mots fléchés ' + level);
+    }
   });
 });

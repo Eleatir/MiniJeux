@@ -9,6 +9,7 @@ var LB_GAMES = {
   minesweeper: { dir: 'asc',  max: 999999, modes: ['easy', 'medium', 'hard'] },
   snake:       { dir: 'desc', max: 100000, modes: ['slow', 'medium', 'fast'] },
   sudoku:      { dir: 'asc',  max: 360000, modes: ['easy', 'medium', 'hard'] },
+  mots:        { dir: 'asc',  max: 360000, modes: ['small', 'medium', 'large'] },
   solitaire:   { dir: 'asc',  max: 100000, modes: ['1', '3'] }
 };
 var LB_TOP = 10;
