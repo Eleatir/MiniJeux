@@ -191,7 +191,7 @@ test.describe('commandes tactiles', () => {
     expect(await page.evaluate(() => sol.tab.map(c => c.length))).toEqual([0, 2, 1, 0, 0, 0, 0]);
     await card(2).tap();
     await card(2).tap();                                               // double-tap
-    expect(await page.evaluate(() => sol.found.map(f => f.length))).toEqual([1, 0, 0, 0]);
+    expect(await page.evaluate(() => sol.found.map(f => f.length))).toEqual([0, 0, 1, 0]);    // A♦ sur la fondation ♦
   });
 
   test('Solitaire : on peut glisser une carte avec le doigt', async ({ page }) => {

@@ -1,8 +1,11 @@
-const { test } = require('node:test');
+const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { load } = require('./helpers');
 
 const g = load(['js/scores.js', 'js/settings.js', 'js/core.js', 'js/storage.js', 'js/fx.js', 'js/games/solitaire.js']);
+
+// Un coup via l'interface démarre le chrono (setInterval) : on l'arrête à la fin pour que Node puisse quitter
+after(() => g.exec('solStop()'));
 
 // Cartes : s = couleur (0 ♠, 1 ♥, 2 ♦, 3 ♣), r = rang (1 as … 13 roi)
 const C = (s, r, up = true) => ({ s, r, up });
@@ -45,13 +48,23 @@ test('solitaire : on ne pose jamais sur une carte cachée, ni sur sa propre colo
   assert.equal(canMove({ from: 't', i: 0, n: 1 }, 't', 0), false);
 });
 
-test('solitaire : fondations dans l\'ordre, une couleur par pile', () => {
-  setGame({ tab: [[C(2, 1)], [C(2, 2)], [C(1, 2)], [], [], [], []] });
-  assert.equal(canMove({ from: 't', i: 0, n: 1 }, 'f', 0), true, 'as sur pile vide');
-  assert.equal(canMove({ from: 't', i: 1, n: 1 }, 'f', 0), false, 'un 2 ne démarre pas une pile');
-  g.exec('sol.found[0] = [{ s: 2, r: 1, up: true }]');
-  assert.equal(canMove({ from: 't', i: 1, n: 1 }, 'f', 0), true, '2♦ sur A♦');
-  assert.equal(canMove({ from: 't', i: 2, n: 1 }, 'f', 0), false, '2♥ sur A♦ refusé (autre couleur)');
+test('solitaire : chaque fondation est réservée à une couleur (♠ ♥ ♦ ♣), dans l\'ordre', () => {
+  setGame({ tab: [[C(2, 1)], [C(2, 2)], [C(1, 2)], [C(0, 1)], [], [], []] });
+  assert.equal(canMove({ from: 't', i: 0, n: 1 }, 'f', 2), true, 'A♦ sur la fondation ♦');
+  for (const j of [0, 1, 3]) assert.equal(canMove({ from: 't', i: 0, n: 1 }, 'f', j), false, 'A♦ refusé sur la fondation ' + j);
+  assert.equal(canMove({ from: 't', i: 3, n: 1 }, 'f', 0), true, 'A♠ sur la fondation ♠');
+  assert.equal(canMove({ from: 't', i: 3, n: 1 }, 'f', 2), false, 'A♠ refusé sur la fondation ♦');
+  assert.equal(canMove({ from: 't', i: 1, n: 1 }, 'f', 2), false, 'un 2 ne démarre pas une pile');
+  g.exec('sol.found[2] = [{ s: 2, r: 1, up: true }]');
+  assert.equal(canMove({ from: 't', i: 1, n: 1 }, 'f', 2), true, '2♦ sur A♦');
+  assert.equal(canMove({ from: 't', i: 2, n: 1 }, 'f', 2), false, '2♥ refusé sur la pile ♦');
+  assert.equal(canMove({ from: 't', i: 2, n: 1 }, 'f', 1), false, '2♥ refusé sur la pile ♥ vide (il faut l\'as d\'abord)');
+});
+
+test('solitaire : les anciennes sauvegardes sont remises en ordre par couleur', () => {
+  setGame({ found: [[C(2, 1), C(2, 2)], [C(0, 1)], [], [C(1, 1)]] });
+  g.exec('solNormalizeFound(sol)');
+  assert.deepEqual(g.run('sol.found.map(p => p.map(c => c.s + ":" + c.r).join(","))'), ['0:1', '1:1', '2:1,2:2', '']);
 });
 
 test('solitaire : une suite de plusieurs cartes ne peut pas aller sur une fondation', () => {
@@ -61,8 +74,8 @@ test('solitaire : une suite de plusieurs cartes ne peut pas aller sur une fondat
 
 test('solitaire : déplacer retourne la carte découverte et compte un coup', () => {
   setGame({ tab: [[C(3, 4, false), C(1, 1)], [], [], [], [], [], []] });
-  g.exec('solMoveCore({ from: "t", i: 0, n: 1 }, "f", 0)');
-  assert.deepEqual(g.run('sol.found[0].map(c => c.r)'), [1]);
+  g.exec('solMoveCore({ from: "t", i: 0, n: 1 }, "f", 1)');   // A♥ → fondation ♥
+  assert.deepEqual(g.run('sol.found[1].map(c => c.r)'), [1]);
   assert.equal(g.run('sol.tab[0][0].up'), true);
   assert.equal(g.run('sol.moves'), 1);
 });
@@ -142,4 +155,34 @@ test('solitaire : même couleur = pas un coup utile (pioche comme colonnes)', ()
   assert.equal(g.run('solHasUsefulMove()'), false);
   setGame({ tab: [[C(3, 4, false), C(1, 8)], [C(2, 9)], [], [], [], [], []] });          // 8♥ sur 9♦ : rouge sur rouge
   assert.equal(g.run('solHasUsefulMove()'), false);
+});
+
+// Double-clic : choix automatique quand plusieurs destinations existent
+const autoMove = (z, i, idx) => g.run(`solAutoMove(${JSON.stringify(z)}, ${i}, ${idx})`);
+
+test('solitaire : double-clic avec deux destinations possibles → choisit la colonne qui cache le moins de cartes', () => {
+  setGame({ tab: [[C(1, 7)], [C(3, 5, false), C(0, 8)], [C(3, 8)], [], [], [], []] });   // 7♥ peut aller sur 8♠ (cache une carte) ou 8♣ (colonne libre)
+  assert.equal(autoMove('t', 0, 0), true);
+  assert.deepEqual(g.run('sol.tab.map(c => c.length)'), [0, 2, 2, 0, 0, 0, 0]);
+  assert.equal(g.run('sol.tab[2][1].r'), 7, 'posé sur la colonne sans carte cachée');
+});
+
+test('solitaire : double-clic avec deux destinations équivalentes → prend la plus à gauche', () => {
+  setGame({ tab: [[C(1, 7)], [C(0, 8)], [C(3, 8)], [], [], [], []] });
+  assert.equal(autoMove('t', 0, 0), true);
+  assert.deepEqual(g.run('sol.tab.map(c => c.length)'), [0, 2, 1, 0, 0, 0, 0]);
+});
+
+test('solitaire : double-clic préfère une colonne à une colonne vide, et la fondation à tout', () => {
+  setGame({ tab: [[C(0, 12)], [C(1, 13)], [], [], [], [], []] });                  // D♠ : sur R♥, ou sur une colonne vide (inutile)
+  assert.equal(autoMove('t', 0, 0), true);
+  assert.deepEqual(g.run('sol.tab.map(c => c.length)'), [0, 2, 0, 0, 0, 0, 0]);
+  setGame({ tab: [[C(0, 1)], [C(1, 2)], [], [], [], [], []] });                    // A♠ : fondation ♠ plutôt que n'importe quoi
+  assert.equal(autoMove('t', 0, 0), true);
+  assert.deepEqual(g.run('sol.found.map(p => p.length)'), [1, 0, 0, 0]);
+});
+
+test('solitaire : double-clic sans destination → rien ne bouge', () => {
+  setGame({ tab: [[C(0, 7)], [C(3, 8)], [], [], [], [], []] });
+  assert.equal(autoMove('t', 0, 0), false);
 });

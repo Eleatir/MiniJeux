@@ -156,6 +156,7 @@
   </div>
   <div class="ms-stats">
     <span>Temps : <strong id="sdTime">0:00</strong></span>
+    <span>Erreurs : <strong id="sdErrors">0/3</strong></span>
     <span>Indices : <strong id="sdHints">0</strong></span>
     <span>Record : <strong id="sdBest">—</strong></span>
   </div>
@@ -170,7 +171,6 @@
     <button class="btn" data-a="erase" title="Effacer (Retour arrière)">⌫ Effacer</button>
     <button class="btn" data-a="undo" title="Annuler (Ctrl+Z)">↶ Annuler</button>
     <button class="btn" data-a="hint" title="Indice (H) : +30 s">💡 Indice</button>
-    <button class="btn" data-a="check" title="Signaler les erreurs">✓ Vérifier</button>
   </div>
   <div class="banner" id="sdBanner"></div>
   <p class="hint">Choisis une case puis un chiffre &nbsp;·&nbsp; <span class="only-desktop">Flèches + 1-9 au clavier &nbsp;·&nbsp; N = notes &nbsp;·&nbsp; H = indice (+30 s)</span><span class="only-mobile">✏️ = notes &nbsp;·&nbsp; 💡 = indice (+30 s)</span></p>
@@ -180,9 +180,11 @@
       <li><strong>But :</strong> remplir la grille pour que chaque ligne, chaque colonne et chaque bloc de 3×3 contienne une seule fois les chiffres de 1 à 9.</li>
       <li><strong>Grilles :</strong> générées à chaque partie, avec une seule solution possible. Plus il y a de cases données au départ, plus c'est facile.</li>
       <li><strong>Jouer :</strong> clique ou touche une case, puis un chiffre du pavé ou du clavier. Retaper le même chiffre l'efface. Les cases de départ (en noir) ne bougent pas.</li>
-      <li><strong>Surbrillance :</strong> la ligne, la colonne et le bloc de la case choisie sont teintés, ainsi que les cases portant le même chiffre. Un doublon s'affiche en rouge.</li>
+      <li><strong>Surbrillance :</strong> la ligne, la colonne et le bloc de la case choisie sont teintés, ainsi que les cases portant le même chiffre.</li>
+      <li><strong>Erreurs :</strong> un chiffre qui n'est pas celui de la solution s'affiche en rouge et compte une erreur. À la 3<sup>e</sup> erreur, la partie est perdue.</li>
+      <li><strong>Fin automatique :</strong> quand plus aucune erreur n'est possible (chaque case vide n'a plus qu'un chiffre candidat), la grille se termine toute seule.</li>
       <li><strong>Notes ✏️ :</strong> note plusieurs chiffres possibles dans une case ; ils disparaissent tout seuls des cases voisines quand tu poses le chiffre.</li>
-      <li><strong>Indice 💡 :</strong> remplit la case choisie (ou une case au hasard) mais ajoute 30 secondes à ton score. <strong>Vérifier ✓</strong> signale tes erreurs un instant, sans pénalité.</li>
+      <li><strong>Indice 💡 :</strong> remplit la case choisie (ou une case au hasard), sans erreur, mais ajoute 30 secondes à ton score.</li>
       <li><strong>Score :</strong> ton temps (indices compris) à la victoire, par difficulté.</li>
     </ul>
   </details>

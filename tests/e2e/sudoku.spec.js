@@ -54,20 +54,102 @@ test('une case de départ ne peut être ni modifiée ni effacée', async ({ page
   expect(await page.evaluate(i => sd.grid[i], g)).toBe(before);
 });
 
-test('un doublon est signalé en rouge, puis disparaît quand on le corrige', async ({ page }) => {
-  // on pose dans une case vide le chiffre d'une case donnée de sa ligne : doublon garanti
-  const [i, v] = await page.evaluate(() => {
-    for (let i = 0; i < 81; i++) {
-      if (sd.puzzle[i]) continue;
-      const p = SD_PEERS[i].find(k => sd.puzzle[k]);
-      if (p !== undefined) return [i, sd.puzzle[p]];
-    }
-  });
+test('un chiffre faux est signalé en rouge tout de suite et compte une erreur', async ({ page }) => {
+  const i = await emptyCell(page);
   await cell(page, i).click();
-  await page.keyboard.press(String(v));
+  await page.keyboard.press(String(await wrongValue(page, i)));
   await expect(cell(page, i)).toHaveClass(/bad/);
+  await expect(page.locator('#sdErrors')).toHaveText('1/3');
   await page.keyboard.press('Backspace');
   await expect(cell(page, i)).not.toHaveClass(/bad/);
+  await expect(page.locator('#sdErrors')).toHaveText('1/3');            // effacer ne rend pas l'erreur
+  await page.keyboard.press(String(await page.evaluate(i => sd.solution[i], i)));
+  await expect(cell(page, i)).not.toHaveClass(/bad/);                    // le bon chiffre ne coûte rien
+  await expect(page.locator('#sdErrors')).toHaveText('1/3');
+});
+
+test('annuler un chiffre faux ne rend pas l\'erreur', async ({ page }) => {
+  const i = await emptyCell(page);
+  await cell(page, i).click();
+  await page.keyboard.press(String(await wrongValue(page, i)));
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('#sdErrors')).toHaveText('1/3');
+});
+
+test('trois erreurs : partie perdue, grille bloquée, aucun score, pas de reprise', async ({ page }) => {
+  for (let k = 0; k < 3; k++) {
+    const i = await emptyCell(page, k);
+    await cell(page, i).click();
+    await page.keyboard.press(String(await wrongValue(page, i)));
+  }
+  await expect(page.locator('#sdBanner')).toContainText('partie perdue');
+  await expect(page.locator('#sdErrors')).toHaveText('3/3');
+  const i4 = await emptyCell(page, 3);
+  await cell(page, i4).click();
+  await page.keyboard.press(String(await page.evaluate(i => sd.solution[i], i4)));
+  expect(await page.evaluate(i => sd.grid[i], i4)).toBe(0);              // plus rien ne se pose
+  await expect(page.locator('.sc-panel')).toHaveCount(0);                // pas de saisie de score
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.card', { hasText: 'Sudoku' }).locator('[data-badge]')).toBeHidden();
+  await page.locator('.card', { hasText: 'Sudoku' }).click();
+  await expect(page.locator('#sdErrors')).toHaveText('0/3');             // nouvelle grille
+});
+
+test('les erreurs sont reprises avec la partie', async ({ page }) => {
+  const i = await emptyCell(page);
+  await cell(page, i).click();
+  await page.keyboard.press(String(await wrongValue(page, i)));
+  await page.keyboard.press('Escape');
+  await page.locator('.card', { hasText: 'Sudoku' }).click();
+  await expect(page.locator('#sdErrors')).toHaveText('1/3');
+});
+
+test('un indice ne compte jamais comme une erreur', async ({ page }) => {
+  await page.locator('#sdTools [data-a="hint"]').click();
+  await expect(page.locator('#sdErrors')).toHaveText('0/3');
+  await expect(page.locator('#sdHints')).toHaveText('1');
+});
+
+test('fin automatique : quand plus aucune erreur n\'est possible, la grille se termine seule', async ({ page }) => {
+  // on laisse trois cases vides, chacune sans ambiguïté possible une fois les autres remplies : on en remplit une, les deux dernières sont « forcées »
+  await page.evaluate(() => {
+    for (let i = 0; i < 81; i++) sd.grid[i] = sd.solution[i];
+    sd.started = true; sd.elapsed = 42;
+    const empties = [0, 40, 80];
+    empties.forEach(i => { if (!sd.puzzle[i]) sd.grid[i] = 0; });
+    sdRender();
+  });
+  const empties = await page.evaluate(() => [0, 40, 80].filter(i => !sd.puzzle[i] && sd.grid[i] === 0));
+  expect(empties.length).toBeGreaterThan(0);
+  await cell(page, empties[0]).click();
+  await page.keyboard.press(String(await page.evaluate(i => sd.solution[i], empties[0])));
+  await expect(page.locator('#sdBanner')).toContainText('Bravo', { timeout: 8000 });
+  expect(await page.evaluate(() => sd.grid.every((v, i) => v === sd.solution[i]))).toBe(true);
+  await modalReady(page);
+  await expect(page.locator('.sc-big')).toHaveText('0:42');                // le chrono s'est arrêté au déclenchement
+});
+
+test('pas de fin automatique tant qu\'une case a encore plusieurs candidats', async ({ page }) => {
+  const i = await emptyCell(page);
+  await cell(page, i).click();
+  await page.keyboard.press(String(await page.evaluate(i => sd.solution[i], i)));
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => sd.auto || sd.won)).toBe(false);
+});
+
+test('la fin automatique ne se déclenche pas si un chiffre faux est encore posé', async ({ page }) => {
+  await page.evaluate(() => {
+    for (let i = 0; i < 81; i++) sd.grid[i] = sd.solution[i];
+    const e = [...Array(81).keys()].filter(i => !sd.puzzle[i]).slice(0, 2);
+    sd.grid[e[0]] = 0;                                                  // une case vide, …
+    sd.grid[e[1]] = (sd.solution[e[1]] % 9) + 1;                        // … et un chiffre faux ailleurs
+    sd.started = true; sdRender();
+  });
+  const e0 = await page.evaluate(() => sd.grid.findIndex((v, i) => !sd.puzzle[i] && v === 0));
+  await cell(page, e0).click();
+  await page.keyboard.press(String(await page.evaluate(i => sd.solution[i], e0)));
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => sd.won)).toBe(false);                 // la case fausse reste à corriger
 });
 
 test('les flèches déplacent la sélection et restent dans la grille', async ({ page }) => {
@@ -114,17 +196,6 @@ test('l\'indice remplit la case choisie, compte une pénalité de 30 s', async (
   expect(await page.evaluate(i => sd.grid[i] === sd.solution[i], i)).toBe(true);
   await expect(page.locator('#sdHints')).toHaveText('1');
   expect(await page.evaluate(() => sdScore() - sd.elapsed)).toBe(30);
-});
-
-test('« Vérifier » signale seulement les chiffres faux, sans pénalité', async ({ page }) => {
-  const [a, b] = [await emptyCell(page, 0), await emptyCell(page, 1)];
-  await cell(page, a).click(); await page.keyboard.press(String(await page.evaluate(a => sd.solution[a], a)));
-  await cell(page, b).click(); await page.keyboard.press(String(await wrongValue(page, b)));
-  await page.locator('#sdTools [data-a="check"]').click();
-  await expect(cell(page, b)).toHaveClass(/wrong/);
-  await expect(cell(page, a)).not.toHaveClass(/wrong/);
-  await expect(page.locator('.sc-toast')).toContainText('1 erreur');
-  expect(await page.evaluate(() => sd.hints)).toBe(0);
 });
 
 test('le pavé grise un chiffre quand il est posé 9 fois', async ({ page }) => {

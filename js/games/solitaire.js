@@ -33,7 +33,7 @@ function initSolitaire(saved) {
   solSel = null; solHist = []; solLast = { k: '', t: 0 }; solAuto = false;
   solElapsed = 0;
   if (saved) {   // reprise : donne, annulations possibles et chrono
-    sol = saved.sol; solHist = saved.hist || []; solElapsed = saved.elapsed || 0;
+    sol = solNormalizeFound(saved.sol); solHist = saved.hist || []; solElapsed = saved.elapsed || 0;
     document.getElementById('solDraw').value = sol.draw;
     if (sol.moves > 0) solClockStart();
   }
@@ -71,9 +71,16 @@ function solPush() {
   if (solHist.length > 300) solHist.shift();
 }
 
+// Chaque fondation ne contient que sa couleur : remet en ordre les anciennes sauvegardes, où un as pouvait aller sur n'importe quelle pile
+function solNormalizeFound(game) {
+  const all = game.found.flat();
+  game.found = [0, 1, 2, 3].map(s => all.filter(c => c.s === s).sort((a, b) => a.r - b.r));
+  return game;
+}
+
 function solUndo() {
   if (!solHist.length || solAuto) return;
-  sol = JSON.parse(solHist.pop());
+  sol = solNormalizeFound(JSON.parse(solHist.pop()));
   solSel = null;
   document.getElementById('solBanner').className = 'banner';
   solRender();
@@ -101,8 +108,10 @@ function solCanMove(sel, to, j) {
   const card = src[src.length - sel.n];
   if (to === 'f') {
     if (sel.n !== 1) return false;
+    // chaque fondation est réservée à une couleur : ♠ ♥ ♦ ♣ dans l'ordre des emplacements affichés
+    if (card.s !== j) return false;
     const pile = sol.found[j], top = pile[pile.length - 1];
-    return top ? top.s === card.s && card.r === top.r + 1 : card.r === 1;
+    return top ? card.r === top.r + 1 : card.r === 1;
   }
   if (to === 't') {
     if (sel.from === 't' && sel.i === j) return false;
@@ -147,10 +156,15 @@ function solAutoMove(z, i, idx) {
       if (emptyDest < 0) emptyDest = j;
     } else dests.push(j);
   }
+  if (!dests.length && emptyDest < 0) return false;
+  // Plusieurs destinations : on choisit celle qui gêne le moins. Recouvrir une colonne qui cache encore des cartes
+  // retarde leur retournement ; on préfère donc la colonne avec le moins de cartes face cachée (puis la plus à gauche).
+  // Une colonne vide passe en dernier.
+  const hidden = j => sol.tab[j].filter(c => !c.up).length;
+  dests.sort((a, b) => hidden(a) - hidden(b) || a - b);
   if (emptyDest >= 0) dests.push(emptyDest);
-  if (dests.length === 1) { solDoMove(sel, 't', dests[0]); return true; }
-  if (dests.length > 1) solSel = sel;        // ambigu : la carte reste sélectionnée
-  return false;
+  solDoMove(sel, 't', dests[0]);
+  return true;
 }
 
 /* ── complétion automatique ── */

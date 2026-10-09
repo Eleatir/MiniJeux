@@ -236,7 +236,6 @@
   .sd-cell.same { background: var(--sd-same); }
   .sd-cell.sel { background: var(--sd-sel); }
   .sd-cell.bad { color: var(--red-text); background: var(--red-bg); }
-  .sd-cell.wrong { background: var(--red-bg); color: var(--red-text); outline: 2px solid var(--red-text); outline-offset: -2px; }
   .sd-notes { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; height: 100%; font-size: 2.3cqw; color: var(--text2); line-height: 1; }
   .sd-notes i { font-style: normal; display: flex; align-items: center; justify-content: center; }
   .sd-pad { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; max-width: 520px; margin-top: 12px; }

@@ -113,3 +113,39 @@ test('sudoku : le score affiche minutes:secondes', () => {
 test('sudoku : la pénalité d\'un indice est de 30 secondes', () => {
   assert.equal(g.run('SD_PENALTY'), 30);
 });
+
+test('sudoku : « plus d\'erreur possible » — une seule case vide est toujours forcée', () => {
+  const { solution } = generate('easy', 21);
+  const grid = solution.slice(); grid[17] = 0;
+  assert.equal(g.run(`sdForced(${JSON.stringify(grid)}, ${JSON.stringify(solution)})`), true);
+});
+
+test('sudoku : « plus d\'erreur possible » — des cases vides indépendantes sont forcées', () => {
+  const { solution } = generate('easy', 22);
+  const grid = solution.slice(); grid[0] = 0; grid[40] = 0; grid[80] = 0;     // trois cases sans voisine commune
+  assert.equal(g.run(`sdForced(${JSON.stringify(grid)}, ${JSON.stringify(solution)})`), true);
+});
+
+test('sudoku : « plus d\'erreur possible » — faux tant qu\'une case a plusieurs candidats', () => {
+  const { puzzle, solution } = generate('hard', 23);
+  assert.equal(g.run(`sdForced(${JSON.stringify(puzzle)}, ${JSON.stringify(solution)})`), false);
+  const medium = generate('medium', 26);
+  assert.equal(g.run(`sdForced(${JSON.stringify(medium.puzzle)}, ${JSON.stringify(medium.solution)})`), false);
+});
+
+test('sudoku : « plus d\'erreur possible » — une grille complète n\'a rien à compléter', () => {
+  const { solution } = generate('easy', 24);
+  assert.equal(g.run(`sdForced(${JSON.stringify(solution)}, ${JSON.stringify(solution)})`), false);
+});
+
+test('sudoku : un chiffre faux encore posé empêche la fin automatique', () => {
+  const { solution } = generate('easy', 25);
+  const grid = solution.slice(); grid[0] = 0;
+  assert.equal(g.run(`sdForced(${JSON.stringify(grid)}, ${JSON.stringify(solution)})`), true, 'sans erreur : la case 0 est forcée');
+  grid[40] = (solution[40] % 9) + 1;                       // un chiffre faux ailleurs
+  assert.equal(g.run(`sdForced(${JSON.stringify(grid)}, ${JSON.stringify(solution)})`), false);
+});
+
+test('sudoku : 3 erreurs au plus', () => {
+  assert.equal(g.run('SD_MAX_ERRORS'), 3);
+});
