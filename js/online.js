@@ -5,7 +5,7 @@
    et signe ses scores de 3 lettres, comme à l'arcade. Tout est facultatif : sans adresse configurée, ou hors connexion,
    le jeu fonctionne exactement comme avant.
 ════════════════════════════════════════════ */
-const OL_PID_KEY = 'minijeux.pid', OL_OUTBOX_KEY = 'minijeux.outbox', OL_OUTBOX_MAX = 50;
+const OL_PID_KEY = 'minijeux.pid', OL_OUTBOX_KEY = 'minijeux.outbox', OL_OUTBOX_MAX = 200, OL_SYNCED_KEY = 'minijeux.synced';
 
 const Online = {
   CACHE_MS: 30000,     // un tableau déjà chargé est réutilisé pendant 30 s
@@ -78,6 +78,21 @@ const Online = {
   _outbox() { try { const a = JSON.parse(localStorage.getItem(OL_OUTBOX_KEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; } },
   _saveOutbox(a) { try { localStorage.setItem(OL_OUTBOX_KEY, JSON.stringify(a.slice(-OL_OUTBOX_MAX))); } catch (e) {} },
   _queue(payload) { this._saveOutbox(this._outbox().concat([payload])); },
+
+  // Une seule fois : envoie les scores déjà gagnés sur cet appareil avant l'activation du classement (3 meilleurs par tableau).
+  // Le service ignore les doublons, donc rejouer cette étape ne coûte rien.
+  syncLocal() {
+    if (!this.enabled()) return 0;
+    try { if (localStorage.getItem(OL_SYNCED_KEY) === this.url()) return 0; } catch (e) {}
+    let n = 0;
+    const out = this._outbox();
+    Object.keys(SC_GAMES).forEach(g => Object.keys(SC_GAMES[g].modes).forEach(m => {
+      scList(g, m).slice(0, 3).forEach(e => { out.push({ action: 'submit', game: g, mode: String(m), v: e.v, n: e.n, d: e.d, pid: this.playerId() }); n++; });
+    }));
+    this._saveOutbox(out);
+    try { localStorage.setItem(OL_SYNCED_KEY, this.url()); } catch (e) {}
+    return n;
+  },
 
   // Renvoie les scores restés en attente (au démarrage, ou après un envoi réussi)
   async flush() {

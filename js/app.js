@@ -2,7 +2,11 @@
    DÉMARRAGE : état initial du menu et message d'accueil
 ════════════════════════════════════════════ */
 menuRefresh();
-if (typeof Online !== "undefined") Online.flush();
+if (typeof Online !== 'undefined') {
+  Online.syncLocal();
+  Online.flush();
+  window.addEventListener('online', () => Online.flush());
+}
 
 function welcomeShow() {
   const ui = scOpen({});
