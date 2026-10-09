@@ -2,7 +2,7 @@
    SCORES  (tableaux locaux, saisie du nom façon borne d'arcade)
 ════════════════════════════════════════════ */
 const SC_KEY = 'minijeux.scores.v1', SC_NAME_KEY = 'minijeux.name', SC_MAX = 10;
-const SC_ORDER = ['wordle', 'minesweeper', 'snake', '2048', 'solitaire'];
+const SC_ORDER = ['wordle', 'minesweeper', 'snake', 'sudoku', 'solitaire'];
 const SC_GAMES = {
   wordle:      { icon:'🟩', label:'Wordle',   dir:'asc',  modes:{ 5:'5 lettres', 6:'6 lettres', 7:'7 lettres' },
                  fmt: v => Math.floor(v / 1000) + (v < 2000 ? ' essai' : ' essais') + ' · ' + (v % 1000) + ' s' },
@@ -10,8 +10,8 @@ const SC_GAMES = {
                  fmt: v => (v / 100).toFixed(2) + ' s' },
   snake:       { icon:'🐍', label:'Snake',    dir:'desc', modes:{ slow:'Facile', medium:'Moyen', fast:'Difficile' },
                  fmt: v => v + ' pts' },
-  '2048':      { icon:'🧩', label:'2048',     dir:'desc', modes:{ all:'Classique' },
-                 fmt: v => v + ' pts' },
+  sudoku:      { icon:'🔢', label:'Sudoku',   dir:'asc',  modes:{ easy:'Facile', medium:'Moyen', hard:'Difficile' },
+                 fmt: v => Math.floor(v / 60) + ':' + String(v % 60).padStart(2, '0') },
   solitaire:   { icon:'🃏', label:'Solitaire', dir:'asc', modes:{ 1:'Pioche 1', 3:'Pioche 3' },
                  fmt: v => v + ' coups' }
 };

@@ -4,7 +4,7 @@ test('le menu propose les cinq jeux et chacun démarre', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveTitle('Mini-jeux');
   await expect(page.locator('.card[data-game]')).toHaveCount(5);
-  for (const [game, title] of [['Wordle', 'Wordle'], ['Démineur', 'Démineur'], ['Snake', 'Snake'], ['2048', '2048'], ['Solitaire', 'Solitaire']]) {
+  for (const [game, title] of [['Wordle', 'Wordle'], ['Démineur', 'Démineur'], ['Snake', 'Snake'], ['Sudoku', 'Sudoku'], ['Solitaire', 'Solitaire']]) {
     await page.locator('.card', { hasText: game }).click();
     await expect(page).toHaveTitle('Mini-jeux — ' + title);
     await expect(page.locator('#game-shell')).toBeVisible();
@@ -36,9 +36,9 @@ test('les règles s\'ouvrent la première fois puis restent repliées', async ({
 
 test('les cartes du menu sont utilisables au clavier', async ({ page }) => {
   await page.goto('/');
-  await page.locator('.card', { hasText: '2048' }).focus();
+  await page.locator('.card', { hasText: 'Sudoku' }).focus();
   await page.keyboard.press('Enter');
-  await expect(page.locator('#tfBoard')).toBeVisible();
+  await expect(page.locator('#sdGrid')).toBeVisible();
 });
 
 test('les réglages se règlent au clavier et sont mémorisés', async ({ page }) => {

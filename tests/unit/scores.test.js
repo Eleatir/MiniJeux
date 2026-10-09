@@ -36,7 +36,7 @@ test('scores : meilleur score et tableaux séparés par jeu et par niveau', () =
   add('snake', 'fast', 90);
   assert.equal(g.run('scBest("snake", "medium")'), 40);
   assert.equal(g.run('scBest("snake", "fast")'), 90);
-  assert.equal(g.run('scBest("2048", "all")'), null);
+  assert.equal(g.run('scBest("sudoku", "easy")'), null);
 });
 
 test('scores : les scores sont sauvegardés dans localStorage et relus', () => {
