@@ -56,8 +56,13 @@
 <!-- ══ GAME SHELL ════════════════════════════════════════════════════ -->
 <div id="game-shell">
   <div class="shell-bar">
-    <button class="back-btn" onclick="leaveGame()">← Retour au menu</button>
-    <span class="shell-actions"><button class="btn" onclick="setShow()" aria-label="Réglages">⚙</button><button class="btn" onclick="scShow(currentGame)">🏆 Scores</button></span>
+    <button class="back-btn" onclick="leaveGame()" aria-label="Retour au menu"><span class="back-ico">←</span><span class="lbl"> Retour au menu</span></button>
+    <span class="shell-title" id="shellTitle"></span>
+    <span class="shell-actions">
+      <button class="btn" id="pauseBtn" onclick="togglePause()" aria-label="Pause" aria-pressed="false">⏸</button>
+      <button class="btn" onclick="setShow()" aria-label="Réglages">⚙</button>
+      <button class="btn" onclick="scShow(currentGame)">🏆<span class="lbl"> Scores</span></button>
+    </span>
   </div>
   <div id="game-content"></div>
 </div>
@@ -72,15 +77,15 @@
         <option value="medium" selected>Moyen — 16×16, 40 mines</option>
         <option value="hard">Difficile — 16×30, 99 mines</option>
       </select>
-      <button class="btn" id="resetBtn">Rejouer</button>
+      <button class="btn" id="resetBtn" aria-label="Rejouer">🔄<span class="lbl"> Rejouer</span></button>
     </div>
   </div>
   <div class="ms-stats">
-    <span>Mines restantes : <strong id="mineCount">40</strong></span>
-    <span>Temps : <strong id="timer">0s</strong></span>
-    <span>Record : <strong id="msBest">—</strong></span>
+    <span><span class="ico">💣</span><span class="lbl">Mines restantes : </span><strong id="mineCount">40</strong></span>
+    <span><span class="ico">⏱</span><span class="lbl">Temps : </span><strong id="timer">0s</strong></span>
+    <span><span class="ico">🏆</span><span class="lbl">Record : </span><strong id="msBest">—</strong></span>
+    <span class="ms-flagbar only-mobile"><button class="btn" id="msFlagBtn" aria-pressed="false">🚩 Drapeau : non</button></span>
   </div>
-  <div class="ms-flagbar only-mobile"><button class="btn" id="msFlagBtn" aria-pressed="false">🚩 Drapeau : non</button></div>
   <div class="grid-wrap"><div class="ms-grid" id="msGrid"></div></div>
   <div class="banner" id="msBanner"></div>
   <p class="hint"><span class="only-desktop">Clic gauche = révéler &nbsp;·&nbsp; Clic droit = drapeau &nbsp;·&nbsp; Clic sur un chiffre entouré d'autant de drapeaux = révèle les voisines (ou clic molette)</span><span class="only-mobile">Touche une case pour la révéler &nbsp;·&nbsp; Appui long (ou bouton 🚩) = drapeau &nbsp;·&nbsp; Touche un chiffre entouré d'autant de drapeaux = révèle les voisines</span></p>
@@ -91,7 +96,7 @@
       <li><strong>Chiffres :</strong> un chiffre indique le nombre de mines dans les 8 cases voisines.</li>
       <li><strong>Clic gauche :</strong> révèle une case (la première est toujours sûre). <strong>Clic droit :</strong> pose ou retire un drapeau, dans la limite du nombre de mines. <strong>Sur mobile :</strong> toucher révèle, un appui long ou le bouton 🚩 pose un drapeau.</li>
       <li><strong>Chording :</strong> clique un chiffre déjà entouré d'autant de drapeaux (ou clic molette) pour révéler d'un coup les cases voisines non marquées. Attention : un drapeau mal placé déclenche une mine.</li>
-      <li><strong>Score :</strong> temps de la victoire, par difficulté.</li>
+      <li class="extra"><strong>Score :</strong> temps de la victoire, par difficulté.</li>
     </ul>
   </details>
 </template>
@@ -107,36 +112,29 @@
         <option value="medium" selected>Moyen</option>
         <option value="fast">Difficile — rapide</option>
       </select>
-      <button class="btn" id="snReset">Rejouer</button>
+      <button class="btn" id="snReset" aria-label="Rejouer">🔄<span class="lbl"> Rejouer</span></button>
     </div>
   </div>
   <div class="sn-stats">
     <span>Score : <strong id="snScore">0</strong></span>
     <span>Meilleur : <strong id="snBest">0</strong></span>
   </div>
-  <div class="sn-wrap">
+  <div class="sn-area"><div class="sn-wrap">
     <canvas id="snCanvas" width="400" height="400"></canvas>
     <div class="sn-overlay" id="snOverlay">
       <p>🐍 Snake</p>
-      <small><span class="only-desktop">Flèches ou ZQSD pour démarrer</span><span class="only-mobile">Glisse ou touche une flèche pour démarrer</span></small>
+      <small><span class="only-desktop">Flèches ou ZQSD pour démarrer</span><span class="only-mobile">Glisse le doigt pour démarrer</span></small>
     </div>
-  </div>
-  <div class="sn-pad only-mobile" id="snPad">
-    <button class="btn" data-dir="U" aria-label="Haut" style="grid-area:u">▲</button>
-    <button class="btn" data-dir="L" aria-label="Gauche" style="grid-area:l">◀</button>
-    <button class="btn" id="snPause" aria-label="Pause" style="grid-area:p">⏸</button>
-    <button class="btn" data-dir="R" aria-label="Droite" style="grid-area:r">▶</button>
-    <button class="btn" data-dir="D" aria-label="Bas" style="grid-area:d">▼</button>
-  </div>
-  <p class="hint" style="margin-top:8px;"><span class="only-desktop">Flèches directionnelles ou Z Q S D &nbsp;·&nbsp; Espace = pause &nbsp;·&nbsp; </span><span class="only-mobile">Glisse sur la grille ou utilise la manette &nbsp;·&nbsp; ⏸ = pause &nbsp;·&nbsp; </span>Le serpent traverse les murs</p>
+  </div></div>
+  <p class="hint" style="margin-top:8px;"><span class="only-desktop">Flèches directionnelles ou Z Q S D &nbsp;·&nbsp; Espace = pause &nbsp;·&nbsp; </span><span class="only-mobile">Glisse le doigt pour tourner &nbsp;·&nbsp; ⏸ = pause &nbsp;·&nbsp; </span>Le serpent traverse les murs</p>
   <details class="rules">
     <summary>Règles et fonctionnement</summary>
     <ul>
       <li><strong>But :</strong> manger le plus de pommes possible sans te mordre la queue.</li>
-      <li><strong>Commandes :</strong> flèches ou Z Q S D sur ordinateur ; sur mobile, glisse le doigt sur la grille ou utilise la manette à l'écran. La première commande lance la partie. Espace, P ou le bouton ⏸ met en pause ; la pause est automatique si tu quittes la fenêtre.</li>
-      <li><strong>Murs :</strong> le serpent les traverse et réapparaît de l'autre côté.</li>
-      <li><strong>Niveaux :</strong> facile, moyen ou difficile = vitesse du serpent, avec un tableau de scores par niveau.</li>
-      <li><strong>Fin :</strong> la partie s'arrête quand la tête touche le corps.</li>
+      <li><strong>Commandes :</strong> flèches ou Z Q S D sur ordinateur ; sur mobile, glisse le doigt n'importe où sur l'écran (la page ne bouge plus). La première commande lance la partie. Espace, P ou le bouton ⏸ met en pause ; la pause est automatique si tu quittes la fenêtre.</li>
+      <li class="extra"><strong>Murs :</strong> le serpent les traverse et réapparaît de l'autre côté.</li>
+      <li class="extra"><strong>Niveaux :</strong> facile, moyen ou difficile = vitesse du serpent, avec un tableau de scores par niveau.</li>
+      <li class="extra"><strong>Fin :</strong> la partie s'arrête quand la tête touche le corps.</li>
     </ul>
   </details>
 </template>
@@ -151,26 +149,26 @@
         <option value="medium" selected>Moyen — 32 indices</option>
         <option value="hard">Difficile — 26 indices</option>
       </select>
-      <button class="btn" id="sdReset">Nouvelle grille</button>
+      <button class="btn" id="sdReset" aria-label="Nouvelle grille">🔄<span class="lbl"> Nouvelle grille</span></button>
     </div>
   </div>
   <div class="ms-stats">
-    <span>Temps : <strong id="sdTime">0:00</strong></span>
-    <span>Indices : <strong id="sdHints">0</strong></span>
-    <span>Record : <strong id="sdBest">—</strong></span>
+    <span><span class="ico">⏱</span><span class="lbl">Temps : </span><strong id="sdTime">0:00</strong></span>
+    <span><span class="ico">❌</span><span class="lbl">Erreurs : </span><strong id="sdErrors">0/3</strong></span>
+    <span><span class="ico">💡</span><span class="lbl">Indices : </span><strong id="sdHints">0</strong></span>
+    <span><span class="ico">🏆</span><span class="lbl">Record : </span><strong id="sdBest">—</strong></span>
   </div>
-  <div class="sd-wrap"><div class="sd-grid" id="sdGrid" role="grid" aria-label="Grille de Sudoku"></div></div>
+  <div class="sd-area"><div class="sd-wrap"><div class="sd-grid" id="sdGrid" role="grid" aria-label="Grille de Sudoku"></div></div></div>
   <div class="sd-pad" id="sdPad">
     <button class="btn" data-n="1">1</button><button class="btn" data-n="2">2</button><button class="btn" data-n="3">3</button>
     <button class="btn" data-n="4">4</button><button class="btn" data-n="5">5</button><button class="btn" data-n="6">6</button>
     <button class="btn" data-n="7">7</button><button class="btn" data-n="8">8</button><button class="btn" data-n="9">9</button>
   </div>
   <div class="sd-tools" id="sdTools">
-    <button class="btn" data-a="notes" title="Notes (N)">✏️ Notes</button>
-    <button class="btn" data-a="erase" title="Effacer (Retour arrière)">⌫ Effacer</button>
-    <button class="btn" data-a="undo" title="Annuler (Ctrl+Z)">↶ Annuler</button>
-    <button class="btn" data-a="hint" title="Indice (H) : +30 s">💡 Indice</button>
-    <button class="btn" data-a="check" title="Signaler les erreurs">✓ Vérifier</button>
+    <button class="btn" data-a="notes" title="Notes (N)" aria-label="Notes">✏️<span class="lbl"> Notes</span></button>
+    <button class="btn" data-a="erase" title="Effacer (Retour arrière)" aria-label="Effacer">⌫<span class="lbl"> Effacer</span></button>
+    <button class="btn" data-a="undo" title="Annuler (Ctrl+Z)" aria-label="Annuler">↶<span class="lbl"> Annuler</span></button>
+    <button class="btn" data-a="hint" title="Indice (H) : +30 s" aria-label="Indice">💡<span class="lbl"> Indice</span></button>
   </div>
   <div class="banner" id="sdBanner"></div>
   <p class="hint">Choisis une case puis un chiffre &nbsp;·&nbsp; <span class="only-desktop">Flèches + 1-9 au clavier &nbsp;·&nbsp; N = notes &nbsp;·&nbsp; H = indice (+30 s)</span><span class="only-mobile">✏️ = notes &nbsp;·&nbsp; 💡 = indice (+30 s)</span></p>
@@ -178,12 +176,14 @@
     <summary>Règles et fonctionnement</summary>
     <ul>
       <li><strong>But :</strong> remplir la grille pour que chaque ligne, chaque colonne et chaque bloc de 3×3 contienne une seule fois les chiffres de 1 à 9.</li>
-      <li><strong>Grilles :</strong> générées à chaque partie, avec une seule solution possible. Plus il y a de cases données au départ, plus c'est facile.</li>
+      <li class="extra"><strong>Grilles :</strong> générées à chaque partie, avec une seule solution possible. Plus il y a de cases données au départ, plus c'est facile.</li>
       <li><strong>Jouer :</strong> clique ou touche une case, puis un chiffre du pavé ou du clavier. Retaper le même chiffre l'efface. Les cases de départ (en noir) ne bougent pas.</li>
-      <li><strong>Surbrillance :</strong> la ligne, la colonne et le bloc de la case choisie sont teintés, ainsi que les cases portant le même chiffre. Un doublon s'affiche en rouge.</li>
+      <li class="extra"><strong>Surbrillance :</strong> la ligne, la colonne et le bloc de la case choisie sont teintés, ainsi que les cases portant le même chiffre.</li>
+      <li><strong>Erreurs :</strong> un chiffre qui n'est pas celui de la solution s'affiche en rouge et compte une erreur. À la 3<sup>e</sup> erreur, la partie est perdue.</li>
+      <li class="extra"><strong>Fin automatique :</strong> quand plus aucune erreur n'est possible (chaque case vide n'a plus qu'un chiffre candidat), la grille se termine toute seule.</li>
       <li><strong>Notes ✏️ :</strong> note plusieurs chiffres possibles dans une case ; ils disparaissent tout seuls des cases voisines quand tu poses le chiffre.</li>
-      <li><strong>Indice 💡 :</strong> remplit la case choisie (ou une case au hasard) mais ajoute 30 secondes à ton score. <strong>Vérifier ✓</strong> signale tes erreurs un instant, sans pénalité.</li>
-      <li><strong>Score :</strong> ton temps (indices compris) à la victoire, par difficulté.</li>
+      <li><strong>Indice 💡 :</strong> remplit la case choisie (ou une case au hasard), sans erreur, mais ajoute 30 secondes à ton score.</li>
+      <li class="extra"><strong>Score :</strong> ton temps (indices compris) à la victoire, par difficulté.</li>
     </ul>
   </details>
 </template>
@@ -197,8 +197,8 @@
         <option value="1" selected>Pioche : 1 carte</option>
         <option value="3">Pioche : 3 cartes</option>
       </select>
-      <button class="btn" id="solUndo">Annuler</button>
-      <button class="btn" id="solReset">Nouvelle donne</button>
+      <button class="btn" id="solUndo" aria-label="Annuler">↶<span class="lbl"> Annuler</span></button>
+      <button class="btn" id="solReset" aria-label="Nouvelle donne">🔄<span class="lbl"> Nouvelle donne</span></button>
     </div>
   </div>
   <div class="ms-stats">
@@ -215,8 +215,8 @@
       <li><strong>Colonnes :</strong> on empile en ordre décroissant en alternant rouge et noir (dame noire sur roi rouge). Seul un roi peut aller sur une colonne vide.</li>
       <li><strong>Pioche :</strong> clique-la pour retourner 1 ou 3 cartes ; quand elle est vide, clique pour la remélanger.</li>
       <li><strong>Déplacer :</strong> glisse-dépose une carte (ou une suite), ou clique-la puis sa destination. Double-clic (double-tap sur mobile) : vers une fondation, sinon vers la seule destination possible.</li>
-      <li><strong>Aides :</strong> le bouton Annuler (ou Ctrl+Z) annule, Nouvelle donne (ou N) relance. Quand toutes les cartes sont visibles et que la fin est assurée, elle se termine automatiquement.</li>
-      <li><strong>Score :</strong> nombre de coups de la victoire, par mode de pioche.</li>
+      <li class="extra"><strong>Aides :</strong> le bouton Annuler (ou Ctrl+Z) annule, Nouvelle donne (ou N) relance. Quand toutes les cartes sont visibles et que la fin est assurée, elle se termine automatiquement.</li>
+      <li class="extra"><strong>Score :</strong> nombre de coups de la victoire, par mode de pioche.</li>
     </ul>
   </details>
 </template>
@@ -231,7 +231,7 @@
         <option value="6">6 lettres</option>
         <option value="7">7 lettres</option>
       </select>
-      <button class="btn" id="wdReset">Nouveau mot</button>
+      <button class="btn" id="wdReset" aria-label="Nouveau mot">🔄<span class="lbl"> Nouveau mot</span></button>
     </div>
   </div>
   <div class="wd-msg" id="wdMsg" aria-live="polite"></div>
@@ -243,13 +243,15 @@
       <li><strong>But :</strong> trouver le mot caché en 6 essais. Choisis sa longueur (5, 6 ou 7 lettres) en haut.</li>
       <li><strong>Saisie :</strong> tape au clavier (ou clique le clavier à l'écran), Entrée valide, Retour arrière efface. Le mot doit exister dans le dictionnaire.</li>
       <li><strong>Couleurs :</strong> vert = bonne lettre bien placée, ambre = lettre présente mais mal placée, gris = lettre absente. Avec le contraste élevé (⚙) : orange et bleu, avec un symbole ● ou ◐.</li>
-      <li><strong>Accents :</strong> ils sont ignorés, tape simplement les lettres.</li>
-      <li><strong>Score :</strong> moins d'essais, puis temps le plus court. Seules les victoires sont enregistrées.</li>
+      <li class="extra"><strong>Accents :</strong> ils sont ignorés, tape simplement les lettres.</li>
+      <li class="extra"><strong>Score :</strong> moins d'essais, puis temps le plus court. Seules les victoires sont enregistrées.</li>
     </ul>
   </details>
 </template>
 
 <script src="js/scores.js"></script>
+<script src="js/config.js"></script>
+<script src="js/online.js"></script>
 <script src="js/settings.js"></script>
 <script src="js/device.js"></script>
 <script src="js/fx.js"></script>

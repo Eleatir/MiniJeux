@@ -33,7 +33,7 @@ function initSolitaire(saved) {
   solSel = null; solHist = []; solLast = { k: '', t: 0 }; solAuto = false;
   solElapsed = 0;
   if (saved) {   // reprise : donne, annulations possibles et chrono
-    sol = saved.sol; solHist = saved.hist || []; solElapsed = saved.elapsed || 0;
+    sol = solNormalizeFound(saved.sol); solHist = saved.hist || []; solElapsed = saved.elapsed || 0;
     document.getElementById('solDraw').value = sol.draw;
     if (sol.moves > 0) solClockStart();
   }
@@ -71,9 +71,16 @@ function solPush() {
   if (solHist.length > 300) solHist.shift();
 }
 
+// Chaque fondation ne contient que sa couleur : remet en ordre les anciennes sauvegardes, où un as pouvait aller sur n'importe quelle pile
+function solNormalizeFound(game) {
+  const all = game.found.flat();
+  game.found = [0, 1, 2, 3].map(s => all.filter(c => c.s === s).sort((a, b) => a.r - b.r));
+  return game;
+}
+
 function solUndo() {
   if (!solHist.length || solAuto) return;
-  sol = JSON.parse(solHist.pop());
+  sol = solNormalizeFound(JSON.parse(solHist.pop()));
   solSel = null;
   document.getElementById('solBanner').className = 'banner';
   solRender();
@@ -101,8 +108,10 @@ function solCanMove(sel, to, j) {
   const card = src[src.length - sel.n];
   if (to === 'f') {
     if (sel.n !== 1) return false;
+    // chaque fondation est réservée à une couleur : ♠ ♥ ♦ ♣ dans l'ordre des emplacements affichés
+    if (card.s !== j) return false;
     const pile = sol.found[j], top = pile[pile.length - 1];
-    return top ? top.s === card.s && card.r === top.r + 1 : card.r === 1;
+    return top ? card.r === top.r + 1 : card.r === 1;
   }
   if (to === 't') {
     if (sel.from === 't' && sel.i === j) return false;
@@ -147,10 +156,15 @@ function solAutoMove(z, i, idx) {
       if (emptyDest < 0) emptyDest = j;
     } else dests.push(j);
   }
+  if (!dests.length && emptyDest < 0) return false;
+  // Plusieurs destinations : on choisit celle qui gêne le moins. Recouvrir une colonne qui cache encore des cartes
+  // retarde leur retournement ; on préfère donc la colonne avec le moins de cartes face cachée (puis la plus à gauche).
+  // Une colonne vide passe en dernier.
+  const hidden = j => sol.tab[j].filter(c => !c.up).length;
+  dests.sort((a, b) => hidden(a) - hidden(b) || a - b);
   if (emptyDest >= 0) dests.push(emptyDest);
-  if (dests.length === 1) { solDoMove(sel, 't', dests[0]); return true; }
-  if (dests.length > 1) solSel = sel;        // ambigu : la carte reste sélectionnée
-  return false;
+  solDoMove(sel, 't', dests[0]);
+  return true;
 }
 
 /* ── complétion automatique ── */
@@ -396,6 +410,18 @@ function solSlot(z, i, label) {
   return d;
 }
 
+// Sur mobile la zone de jeu a une hauteur imposée (pas de défilement) : on resserre les cartes empilées jusqu'à ce que tout tienne.
+// Sur ordinateur la zone s'étire avec son contenu : rien à faire.
+function solFit(board, tab, maxOff) {
+  if (board.scrollHeight <= board.clientHeight + 1) return;
+  let f = 1;
+  const apply = () => {
+    board.querySelectorAll('.sol-tab .sol-card').forEach(c => { c.style.top = (+c.dataset.off * f) + 'cqw'; });
+    tab.style.paddingBottom = (maxOff * f + 2) + 'cqw';
+  };
+  while (board.scrollHeight > board.clientHeight + 1 && f > 0.5) { f -= 0.05; apply(); }
+}
+
 function solRender() {
   const board = document.getElementById('solBoard');
   board.innerHTML = '';
@@ -438,7 +464,9 @@ function solRender() {
     let off = 0;
     col.forEach((c, k) => {
       const selected = solSel && solSel.from === 't' && solSel.i === i && k >= col.length - solSel.n;
-      slot.appendChild(solCardEl(c, 't', i, k, off, selected));
+      const el = solCardEl(c, 't', i, k, off, selected);
+      el.dataset.off = off;
+      slot.appendChild(el);
       off += c.up ? SOL_UP : SOL_DOWN;
     });
     maxOff = Math.max(maxOff, off - (col.length && col[col.length - 1].up ? SOL_UP : SOL_DOWN));
@@ -446,6 +474,7 @@ function solRender() {
   });
   tab.style.paddingBottom = (maxOff + 2) + 'cqw';
   board.appendChild(tab);
+  solFit(board, tab, maxOff);
 
   document.getElementById('solMoves').textContent = sol.moves;
   solShowTime();
@@ -473,6 +502,9 @@ function solRender() {
 }
 
 
+// L'écran change de taille (rotation, clavier…) : on réajuste les cartes
+function solRefit() { if (sol && document.getElementById('solBoard')) solRender(); }
+
 // Raccourcis : Ctrl+Z annuler, N nouvelle donne
 function solKeyHandler(e) {
   if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'z') { e.preventDefault(); if (!solAuto) solUndo(); return; }
@@ -482,9 +514,12 @@ function solKeyHandler(e) {
 
 GAMES.solitaire = {
   wide: true,   // cartes plus grandes sur grand écran
-  start(saved) { document.addEventListener('keydown', solKeyHandler); initSolitaire(saved); },
-  stop()  { solStop(); document.removeEventListener('keydown', solKeyHandler); },
+  start(saved) { document.addEventListener('keydown', solKeyHandler); window.addEventListener('resize', solRefit); initSolitaire(saved); },
+  stop()  { solStop(); document.removeEventListener('keydown', solKeyHandler); window.removeEventListener('resize', solRefit); },
   inProgress() { return !!sol && sol.moves > 0 && !sol.won; },
+  canPause() { return !!sol && !sol.won && !solAuto; },
+  pause() { solClockStop(); },
+  resume() { if (sol.moves > 0) solClockStart(); },
   save() {
     if (!GAMES.solitaire.inProgress()) return null;
     return { sol, hist: solHist.slice(-40), elapsed: solElapsed };

@@ -5,6 +5,7 @@
 ════════════════════════════════════════════ */
 const SD_LEVELS = { easy: 40, medium: 32, hard: 26 };   // nombre de cases données au départ
 const SD_PENALTY = 30;                                   // secondes ajoutées au score par indice demandé
+const SD_MAX_ERRORS = 3;                                 // une partie est perdue à la 3e erreur (chiffre qui n'est pas celui de la solution)
 
 /* ── logique pure (testée sans navigateur) ── */
 
@@ -116,16 +117,32 @@ function sdConflicts(grid) {
   return bad;
 }
 
+// « Plus d'erreur possible » : chaque case encore vide n'a plus qu'un seul chiffre candidat (compte tenu des cases justes).
+// Tant qu'un chiffre faux est posé, la fin automatique ne se déclenche pas : c'est au joueur de le corriger.
+function sdForced(grid, solution) {
+  if (grid.some((v, i) => v && v !== solution[i])) return false;
+  const ok = grid;
+  if (ok.every(Boolean)) return false;
+  for (let i = 0; i < 81; i++) {
+    if (ok[i]) continue;
+    let seen = 0;
+    for (const p of SD_PEERS[i]) if (ok[p]) seen |= 1 << ok[p];
+    const cand = ~seen & 0x3fe;
+    if (cand === 0 || (cand & (cand - 1)) !== 0) return false;     // 0 ou plusieurs candidats
+  }
+  return true;
+}
+
 const sdFmt = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 
 /* ── partie ── */
-let sd = null, sdClock = null, sdFlashTimer = null;
+let sd = null, sdClock = null, sdAutoTimer = null;
 
 function sdNewState(level) {
   const g = sdGenerate(level);
   return {
     level, puzzle: g.puzzle, solution: g.solution, grid: g.puzzle.slice(), notes: Array(81).fill(0),
-    hints: 0, elapsed: 0, started: false, won: false, sel: -1, noteMode: false, hist: [], flash: []
+    hints: 0, errors: 0, elapsed: 0, started: false, won: false, lost: false, auto: false, sel: -1, noteMode: false, hist: []
   };
 }
 
@@ -133,7 +150,7 @@ function initSudoku(saved) {
   sdStop();
   const sel = document.getElementById('sdLevel');
   if (saved) sel.value = saved.level;
-  sd = saved ? Object.assign(saved, { hist: [], flash: [], sel: -1, won: false }) : sdNewState(sel.value);
+  sd = saved ? Object.assign(saved, { hist: [], sel: -1, won: false, lost: false, auto: false, errors: saved.errors || 0 }) : sdNewState(sel.value);
   const banner = document.getElementById('sdBanner');
   banner.className = 'banner'; banner.textContent = '';
   document.getElementById('sdReset').onclick = () => { document.activeElement.blur(); confirmAbandon(() => initSudoku(), 'Nouvelle grille'); };
@@ -144,7 +161,7 @@ function initSudoku(saved) {
   document.getElementById('sdTools').onclick = e => {
     const b = e.target.closest('[data-a]');
     if (!b) return;
-    ({ notes: sdToggleNotes, erase: sdErase, undo: sdUndo, hint: sdHint, check: sdCheck })[b.dataset.a]();
+    ({ notes: sdToggleNotes, erase: sdErase, undo: sdUndo, hint: sdHint })[b.dataset.a]();
   };
   if (sd.started) sdClockStart();
   sdShowBest();
@@ -163,7 +180,8 @@ function sdClockStart() {
   sdClock = setInterval(() => { if (!document.hidden && !sd.won) { sd.elapsed++; sdShowTime(); } }, 1000);
 }
 function sdClockStop() { clearInterval(sdClock); sdClock = null; }
-function sdStop() { sdClockStop(); clearTimeout(sdFlashTimer); }
+function sdStop() { sdClockStop(); clearInterval(sdAutoTimer); sdAutoTimer = null; }
+const sdLocked = () => sd.won || sd.lost || sd.auto;
 function sdShowTime() {
   const el = document.getElementById('sdTime');
   if (el) el.textContent = sdFmt(sd.elapsed);
@@ -184,7 +202,7 @@ function sdStarted() {
 
 // Pose un chiffre dans la case choisie (ou une note en mode notes). Même chiffre deux fois = efface.
 function sdEnter(v) {
-  if (sd.won || sd.sel < 0 || sd.puzzle[sd.sel]) return;
+  if (sdLocked() || sd.sel < 0 || sd.puzzle[sd.sel]) return;
   const i = sd.sel;
   sdStarted();
   if (sd.noteMode) {
@@ -198,14 +216,15 @@ function sdEnter(v) {
     else {
       sd.grid[i] = v; sd.notes[i] = 0;
       for (const p of SD_PEERS[i]) sd.notes[p] &= ~(1 << v);      // le chiffre disparaît des notes de ses voisines
-      Sfx.play(sdConflicts(sd.grid).has(i) ? 'bad' : 'place');
+      if (v !== sd.solution[i]) { sd.errors++; Sfx.play('bad'); }   // erreur : le chiffre n'est pas celui de la solution
+      else Sfx.play('place');
     }
   }
   sdAfterChange();
 }
 
 function sdErase() {
-  if (sd.won || sd.sel < 0 || sd.puzzle[sd.sel]) return;
+  if (sdLocked() || sd.sel < 0 || sd.puzzle[sd.sel]) return;
   const i = sd.sel;
   if (!sd.grid[i] && !sd.notes[i]) return;
   sdPush();
@@ -216,7 +235,7 @@ function sdErase() {
 function sdToggleNotes() { sd.noteMode = !sd.noteMode; sdRender(); }
 
 function sdUndo() {
-  if (sd.won || !sd.hist.length) return;
+  if (sdLocked() || !sd.hist.length) return;
   const h = sd.hist.pop();
   sd.grid = h.grid; sd.notes = h.notes;
   sdAfterChange(true);
@@ -224,7 +243,7 @@ function sdUndo() {
 
 // Indice : remplit la case choisie, sinon une case vide ou fausse au hasard. Coûte SD_PENALTY secondes.
 function sdHint() {
-  if (sd.won) return;
+  if (sdLocked()) return;
   const wrong = i => !sd.puzzle[i] && sd.grid[i] !== sd.solution[i];
   let i = sd.sel;
   if (i < 0 || !wrong(i)) {
@@ -241,21 +260,37 @@ function sdHint() {
   sdAfterChange();
 }
 
-// Vérifier : signale un instant les chiffres posés qui ne sont pas les bons (sans pénalité)
-function sdCheck() {
-  if (sd.won) return;
-  sd.flash = [...Array(81).keys()].filter(i => !sd.puzzle[i] && sd.grid[i] && sd.grid[i] !== sd.solution[i]);
-  scToast(sd.flash.length ? sd.flash.length + (sd.flash.length > 1 ? ' erreurs signalées' : ' erreur signalée') : 'Aucune erreur pour l\'instant');
-  Sfx.play(sd.flash.length ? 'bad' : 'good');
+function sdAfterChange(isUndo) {
+  if (!isUndo && sd.errors >= SD_MAX_ERRORS) { sdLose(); sdRender(); return; }
+  if (!isUndo && sd.grid.every((v, i) => v === sd.solution[i])) { sdWin(); sdRender(); return; }
   sdRender();
-  clearTimeout(sdFlashTimer);
-  sdFlashTimer = setTimeout(() => { if (sd) { sd.flash = []; sdRender(); } }, 2500);
+  if (sdForced(sd.grid, sd.solution)) sdAutoComplete();
 }
 
-function sdAfterChange(isUndo) {
-  sd.flash = [];
-  if (!isUndo && sd.grid.every((v, i) => v === sd.solution[i])) sdWin();
-  sdRender();
+// Plus aucune erreur possible : la grille se termine toute seule, case par case
+function sdAutoComplete() {
+  sd.auto = true; sd.sel = -1;
+  sdClockStop();
+  const b = document.getElementById('sdBanner');
+  b.className = 'banner win'; b.textContent = 'Plus d\'erreur possible : la grille se termine toute seule…';
+  const fill = () => {
+    const i = sd.grid.findIndex((v, k) => v !== sd.solution[k]);
+    if (i < 0) { clearInterval(sdAutoTimer); sdAutoTimer = null; sd.auto = false; sdWin(); sdRender(); return; }
+    sd.grid[i] = sd.solution[i]; sd.notes[i] = 0;
+    Sfx.play('place');
+    sdRender();
+  };
+  clearInterval(sdAutoTimer);
+  sdAutoTimer = setInterval(fill, motionOK() ? 90 : 10);
+}
+
+function sdLose() {
+  sd.lost = true; sd.sel = -1;
+  sdClockStop();
+  const b = document.getElementById('sdBanner');
+  b.className = 'banner lose';
+  b.textContent = SD_MAX_ERRORS + ' erreurs : partie perdue. Lance une nouvelle grille !';
+  Sfx.play('lose');
 }
 
 function sdScore() { return sd.elapsed + sd.hints * SD_PENALTY; }
@@ -273,7 +308,6 @@ function sdWin() {
 function sdRender() {
   const grid = document.getElementById('sdGrid');
   if (!grid) return;
-  const bad = sdConflicts(sd.grid), flash = new Set(sd.flash);
   const selVal = sd.sel >= 0 ? sd.grid[sd.sel] : 0;
   const peers = sd.sel >= 0 ? new Set(SD_PEERS[sd.sel]) : new Set();
   let html = '';
@@ -286,8 +320,7 @@ function sdRender() {
     if (peers.has(i)) cls += ' peer';
     if (selVal && v === selVal) cls += ' same';
     if (i === sd.sel) cls += ' sel';
-    if (bad.has(i)) cls += ' bad';
-    if (flash.has(i)) cls += ' wrong';
+    if (v && !sd.puzzle[i] && v !== sd.solution[i]) cls += ' bad';      // chiffre faux, signalé tout de suite
     let inner = '';
     if (v) inner = v;
     else if (sd.notes[i]) {
@@ -304,6 +337,7 @@ function sdRender() {
   document.querySelectorAll('#sdPad [data-n]').forEach(b => b.classList.toggle('done', counts[+b.dataset.n] >= 9));
   document.querySelector('#sdTools [data-a="notes"]').classList.toggle('on', sd.noteMode);
   document.getElementById('sdHints').textContent = sd.hints;
+  document.getElementById('sdErrors').textContent = sd.errors + '/' + SD_MAX_ERRORS;
   sdShowTime();
 }
 
@@ -329,10 +363,13 @@ function sdKeyHandler(e) {
 GAMES.sudoku = {
   start(saved) { document.addEventListener('keydown', sdKeyHandler); initSudoku(saved); },
   stop() { sdStop(); document.removeEventListener('keydown', sdKeyHandler); },
-  inProgress() { return !!sd && sd.started && !sd.won; },
+  inProgress() { return !!sd && sd.started && !sd.won && !sd.lost; },
+  canPause() { return !!sd && !sd.won && !sd.lost && !sd.auto; },
+  pause() { sdClockStop(); },
+  resume() { if (sd.started) sdClockStart(); },
   save() {
     if (!GAMES.sudoku.inProgress()) return null;
     return { level: sd.level, puzzle: sd.puzzle, solution: sd.solution, grid: sd.grid, notes: sd.notes,
-             hints: sd.hints, elapsed: sd.elapsed, started: true, noteMode: sd.noteMode };
+             hints: sd.hints, errors: sd.errors, elapsed: sd.elapsed, started: true, noteMode: sd.noteMode };
   }
 };

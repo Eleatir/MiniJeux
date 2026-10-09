@@ -110,13 +110,17 @@ function scToast(txt) {
   setTimeout(() => t.remove(), 3000);
 }
 
-function scClose() { if (scUI) { scUI.el.remove(); scUI = null; } }
+// keepPause : appelé en interne quand une fenêtre en remplace une autre (la pause ne doit pas clignoter)
+function scClose(keepPause) {
+  if (scUI) { scUI.el.remove(); scUI = null; }
+  if (!keepPause && typeof pausedByModal !== 'undefined' && pausedByModal) { pausedByModal = false; resumeGame(); }
+}
 
 function scOpen(handlers) {
-  scClose();
+  scClose(true);
   if (document.activeElement) document.activeElement.blur();
-  const g = typeof activeGame !== 'undefined' && activeGame && GAMES[activeGame];
-  if (g && g.pause) g.pause();
+  // pendant qu'une fenêtre est ouverte, la partie est en pause (elle repart à la fermeture, sauf si le joueur l'avait déjà mise en pause)
+  if (typeof pauseGame === 'function' && !pausedByModal && pauseGame()) pausedByModal = true;
   const el = document.createElement('div');
   el.className = 'sc-back';
   el.innerHTML = '<div class="sc-panel" role="dialog" aria-modal="true"></div>';
@@ -160,6 +164,7 @@ function scSubmit(g, m, v, done) {
       const name = letters.join('');
       try { localStorage.setItem(SC_NAME_KEY, name); } catch (e) {}
       id = scAdd(g, m, v, name);
+      if (typeof Online !== 'undefined') Online.submit(g, m, v, name, Date.now());   // classement général (sans effet s'il n'est pas configuré)
     }
     scClose();
     if (save && typeof menuRefresh === 'function') menuRefresh();   // les records affichés sur les cartes du menu
@@ -195,11 +200,13 @@ function scSubmit(g, m, v, done) {
 // Tableau des meilleurs scores (g/m : jeu et mode affichés, hi : entrée à mettre en évidence)
 function scShow(g, m, hi) {
   if (!SC_GAMES[g]) g = 'snake';
-  const st = { g, m: (SC_GAMES[g].modes[m] !== undefined) ? String(m) : Object.keys(SC_GAMES[g].modes)[0] };
+  const st = { g, m: (SC_GAMES[g].modes[m] !== undefined) ? String(m) : Object.keys(SC_GAMES[g].modes)[0], s: 'me', all: null };
   const ui = scOpen({});
   const render = () => {
-    const cfg = SC_GAMES[st.g], list = scList(st.g, st.m);
+    const cfg = SC_GAMES[st.g], all = st.s === 'all', list = all ? ((st.all && st.all.entries) || []) : scList(st.g, st.m);
     let h = '<p class="sc-kicker">🏆 MEILLEURS SCORES</p>';
+    h += '<div class="sc-modes sc-scope">' + [['me', '👤 Moi'], ['all', '🌍 Tous']].map(([k, t]) =>
+      '<button class="sc-mode' + (k === st.s ? ' on' : '') + '" data-s="' + k + '">' + t + '</button>').join('') + '</div>';
     h += '<div class="sc-tabs">' + SC_ORDER.map(k =>
       '<button class="sc-tab' + (k === st.g ? ' on' : '') + '" data-g="' + k + '">' + SC_GAMES[k].icon + ' ' + SC_GAMES[k].label + '</button>').join('') + '</div>';
     h += '<div class="sc-modes">' + Object.keys(cfg.modes).map(k =>
@@ -208,12 +215,22 @@ function scShow(g, m, hi) {
     for (let i = 0; i < SC_MAX; i++) {
       const e = list[i];
       h += e
-        ? '<div class="sc-row' + (e.id === hi ? ' hi' : '') + '"><span>' + (i + 1) + '.</span><span class="sc-n">' + e.n + '</span><span class="sc-v">' + cfg.fmt(e.v) + '</span><span class="sc-d">' + new Date(e.d).toLocaleDateString('fr-FR') + '</span></div>'
+        ? '<div class="sc-row' + (e.id === hi || e.mine ? ' hi' : '') + '"><span>' + (i + 1) + '.</span><span class="sc-n">' + e.n + '</span><span class="sc-v">' + cfg.fmt(e.v) + '</span><span class="sc-d">' + new Date(e.d).toLocaleDateString('fr-FR') + '</span></div>'
         : '<div class="sc-row empty"><span>' + (i + 1) + '.</span><span class="sc-n">---</span><span class="sc-v">-</span><span class="sc-d"></span></div>';
     }
-    h += '</div><p class="sc-hint">← → mode · ↑ ↓ jeu · Échap pour fermer</p>' +
-         '<div class="sc-actions"><button class="btn" data-a="reset">Effacer ce tableau</button><button class="btn sc-ok" data-a="close">Fermer</button></div>';
+    h += '</div>';
+    if (all) {
+      const r = st.all;
+      h += '<p class="sc-hint sc-status">' + (!r ? 'Chargement…' : r.disabled ? 'Classement général non activé (voir le README).' : r.error ? 'Classement injoignable' + (list.length ? ' — dernières données affichées.' : '.') : list.length ? 'Tes scores sont en surbrillance.' : 'Aucun score pour le moment.') + '</p>';
+    } else h += '<p class="sc-hint">← → mode · ↑ ↓ jeu · Échap pour fermer</p>';
+    h += '<div class="sc-actions">' + (all ? '' : '<button class="btn" data-a="reset">Effacer ce tableau</button>') + '<button class="btn sc-ok" data-a="close">Fermer</button></div>';
     ui.panel.innerHTML = h;
+  };
+  const load = () => {
+    if (st.s !== 'all') return;
+    st.all = null;
+    const g0 = st.g, m0 = st.m;
+    Online.top(g0, m0).then(r => { if (scUI === ui && st.s === 'all' && st.g === g0 && st.m === m0) { st.all = r; render(); } });
   };
   const step = (arr, cur, d) => arr[(arr.indexOf(cur) + d + arr.length) % arr.length];
   ui.key = e => {
@@ -225,13 +242,14 @@ function scShow(g, m, hi) {
       st.g = step(SC_ORDER, st.g, e.key === 'ArrowUp' ? -1 : 1);
       st.m = Object.keys(SC_GAMES[st.g].modes)[0];
     } else return;
-    hi = null; render();
+    hi = null; render(); load();
   };
   ui.el.addEventListener('click', e => {
     if (e.target === ui.el) { scClose(); return; }
     const b = e.target.closest('button');
     if (!b) return;
-    if (b.dataset.g) { st.g = b.dataset.g; st.m = Object.keys(SC_GAMES[st.g].modes)[0]; hi = null; }
+    if (b.dataset.s) { st.s = b.dataset.s; hi = null; }
+    else if (b.dataset.g) { st.g = b.dataset.g; st.m = Object.keys(SC_GAMES[st.g].modes)[0]; hi = null; }
     else if (b.dataset.m) { st.m = b.dataset.m; hi = null; }
     else if (b.dataset.a === 'close') { scClose(); return; }
     else if (b.dataset.a === 'reset') {
@@ -239,7 +257,7 @@ function scShow(g, m, hi) {
       if (scLoad()[st.g]) delete scData[st.g][st.m];
       scSave();
     }
-    render();
+    render(); load();
   });
   render();
 }

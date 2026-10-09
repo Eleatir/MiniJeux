@@ -51,10 +51,30 @@ test('un coup interdit désélectionne sans rien déplacer', async ({ page }) =>
   expect(await page.evaluate(() => sol.tab.map(c => c.length))).toEqual([1, 1, 0, 0, 0, 0, 0]);
 });
 
-test('double-clic : un as monte directement à la fondation', async ({ page }) => {
-  await setGame(page, { tab: [[C(2, 1)], [C(0, 9)], [], [], [], [], []] });
+test('double-clic : un as monte directement sur la fondation de sa couleur', async ({ page }) => {
+  await setGame(page, { tab: [[C(2, 1)], [C(0, 9)], [], [], [], [], []] });                // A♦
   await card(page, 0).dblclick(corner);
-  expect(await page.evaluate(() => sol.found.map(f => f.length))).toEqual([1, 0, 0, 0]);
+  expect(await page.evaluate(() => sol.found.map(f => f.length))).toEqual([0, 0, 1, 0]);   // ♠ ♥ ♦ ♣ : la troisième pile
+});
+
+test('les fondations affichent leur couleur et refusent une autre couleur au glisser-déposer', async ({ page }) => {
+  await setGame(page, { tab: [[C(2, 1)], [], [], [], [], [], []] });
+  await expect(page.locator('.sol-slot[data-zone="f"]')).toHaveText(['♠', '♥', '♦', '♣']);
+  const a = await card(page, 0).boundingBox(), wrong = await page.locator('.sol-slot[data-zone="f"][data-i="0"]').boundingBox();
+  await page.mouse.move(a.x + 10, a.y + 10);
+  await page.mouse.down();
+  await page.mouse.move(wrong.x + wrong.width / 2, wrong.y + wrong.height / 2, { steps: 8 });
+  await page.mouse.up();
+  expect(await page.evaluate(() => sol.found.flat().length)).toBe(0);                      // A♦ refusé sur la pile ♠
+  await expect(page.locator('.sol-slot.drop')).toHaveCount(0);
+  const right = await page.locator('.sol-slot[data-zone="f"][data-i="2"]').boundingBox();
+  await page.mouse.move(a.x + 10, a.y + 10);
+  await page.mouse.down();
+  await page.mouse.move(a.x + 40, a.y - 30, { steps: 3 });
+  await expect(page.locator('.sol-slot.drop')).toHaveCount(1);                              // seule la pile ♦ est mise en évidence
+  await page.mouse.move(right.x + right.width / 2, right.y + right.height / 2, { steps: 8 });
+  await page.mouse.up();
+  expect(await page.evaluate(() => sol.found.map(f => f.length))).toEqual([0, 0, 1, 0]);
 });
 
 test('double-clic depuis la pioche : la carte de la défausse monte à la fondation', async ({ page }) => {
@@ -69,11 +89,17 @@ test('double-clic : une dame noire va sous le roi rouge, seule destination possi
   expect(await page.evaluate(() => sol.tab[0].map(c => c.r))).toEqual([13, 12]);
 });
 
-test('double-clic : plusieurs destinations possibles → la carte reste sélectionnée', async ({ page }) => {
+test('double-clic : plusieurs destinations possibles → choisit la colonne qui cache le moins de cartes', async ({ page }) => {
+  await setGame(page, { tab: [[C(1, 7)], [C(3, 5, false), C(0, 8)], [C(3, 8)], [], [], [], []] });
+  await card(page, 0).dblclick(corner);
+  expect(await page.evaluate(() => sol.tab.map(c => c.length))).toEqual([0, 2, 2, 0, 0, 0, 0]);
+  expect(await page.evaluate(() => sol.tab[2].map(c => c.r))).toEqual([8, 7]);
+});
+
+test('double-clic : deux destinations équivalentes → la plus à gauche', async ({ page }) => {
   await setGame(page, { tab: [[C(1, 7)], [C(0, 8)], [C(3, 8)], [], [], [], []] });
   await card(page, 0).dblclick(corner);
-  expect(await page.evaluate(() => sol.tab.map(c => c.length))).toEqual([1, 1, 1, 0, 0, 0, 0]);
-  await expect(card(page, 0)).toHaveClass(/sel/);
+  expect(await page.evaluate(() => sol.tab.map(c => c.length))).toEqual([0, 2, 1, 0, 0, 0, 0]);
 });
 
 test('double-clic sur un roi seul au fond d\'une colonne : il ne bouge pas', async ({ page }) => {

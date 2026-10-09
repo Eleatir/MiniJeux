@@ -26,11 +26,18 @@ test('le message d\'accueil s\'affiche une seule fois', async ({ browser }) => {
   await context.close();
 });
 
-test('les règles s\'ouvrent la première fois puis restent repliées', async ({ page }) => {
-  await openGame(page, 'Démineur');
+test('les règles sont toujours repliées à l\'ouverture d\'un jeu, et se déplient d\'un clic', async ({ page }) => {
+  await page.goto('/');
+  for (const game of ['Wordle', 'Démineur', 'Snake', 'Sudoku', 'Solitaire']) {
+    await page.locator('.card', { hasText: game }).click();
+    await expect(page.locator('details.rules'), game).not.toHaveAttribute('open', '');
+    await page.keyboard.press('Escape');
+  }
+  await page.locator('.card', { hasText: 'Sudoku' }).click();
+  await page.locator('details.rules summary').click();
   await expect(page.locator('details.rules')).toHaveAttribute('open', '');
   await page.keyboard.press('Escape');
-  await page.locator('.card', { hasText: 'Démineur' }).click();
+  await page.locator('.card', { hasText: 'Sudoku' }).click();             // même après l'avoir ouverte, elle est de nouveau repliée
   await expect(page.locator('details.rules')).not.toHaveAttribute('open', '');
 });
 
@@ -120,7 +127,7 @@ test('un ordinateur est détecté comme tel : pas de commandes tactiles', async 
   await expect(page.locator('html')).toHaveAttribute('data-device', 'desktop');
   expect(await page.evaluate(() => Device.detect())).toBe('desktop');
   await page.locator('.card', { hasText: 'Snake' }).click();
-  await expect(page.locator('#snPad')).toBeHidden();
+  await expect(page.locator('#snPad')).toHaveCount(0);
   await expect(page.locator('.sn-overlay .only-desktop')).toBeVisible();
   await expect(page.locator('.sn-overlay .only-mobile')).toBeHidden();
 });
@@ -134,7 +141,7 @@ test('on peut forcer l\'affichage mobile depuis les réglages, et revenir en aut
   await expect(page.locator('html')).toHaveAttribute('data-device', 'mobile');
   await page.keyboard.press('Escape');
   await page.locator('.card', { hasText: 'Snake' }).click();
-  await expect(page.locator('#snPad')).toBeVisible();
+  await expect(page.locator('.sn-overlay .only-mobile')).toBeVisible();     // textes et commandes du mode mobile
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '⚙ Réglages' }).click();
   await modalReady(page);
