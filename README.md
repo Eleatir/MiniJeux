@@ -9,7 +9,20 @@ Cinq petits jeux jouables dans le navigateur, sans installation ni dépendance :
 - **Confort** : Échap revient au menu, confirmation avant d'abandonner une partie, règles dépliables dans chaque jeu (ouvertes la première fois), pause automatique du Snake, Ctrl+Z et N au Solitaire.
 - **Réglages** (⚙) : effets sonores (désactivés par défaut), contraste élevé pour le daltonisme, animations activables/désactivables (la préférence « réduire les animations » du système est respectée).
 - **Ordinateur ou mobile** : l'appareil est détecté automatiquement (pointeur tactile ou navigateur mobile). Sur mobile : commandes tactiles dans chaque jeu (manette et glissement au Snake, appui long ou bouton 🚩 au Démineur, pavé numérique au Sudoku, glisser-déposer et double-tap au Solitaire), grandes zones à toucher, mise en page qui tient sur 320 px. Le réglage ⚙ « Affichage » permet de forcer l'un ou l'autre.
-- Tout est gardé dans le navigateur (`localStorage`), rien n'est envoyé nulle part.
+- **Pause** (⏸ ou Espace/P) dans tous les jeux : les chronos sont gelés et la grille masquée ; les fenêtres (scores, réglages) mettent la partie en pause toutes seules. Sur mobile, tout tient dans l'écran, sans défilement.
+- **Scores « Moi » et « Tous »** : le tableau montre ses propres scores (sur l'appareil) ou le classement général de tous les joueurs (voir ci-dessous).
+- Les parties et les scores personnels sont gardés dans le navigateur (`localStorage`). Le classement général est facultatif : sans lui, rien n'est envoyé nulle part.
+
+## Classement général (facultatif)
+
+**Aucun compte joueur n'est nécessaire.** Chacun garde ses 3 lettres d'arcade ; l'appareil est reconnu par un identifiant aléatoire (jamais affiché) pour mettre ses propres scores en évidence. Seul le propriétaire du site a besoin d'un compte Google (gratuit) pour héberger le classement :
+
+1. Crée une feuille Google Sheets vide, puis **Extensions → Apps Script**.
+2. Colle le contenu de `server/apps-script.gs`, enregistre.
+3. **Déployer → Nouveau déploiement → Application Web** : exécuter en tant que *moi*, accès *tout le monde*. Autorise, puis copie l'adresse terminée par `/exec`.
+4. Colle-la dans `js/config.js` (`LEADERBOARD_URL`), commit, push.
+
+Limite assumée : sans compte, n'importe qui connaissant l'adresse peut envoyer un score avec n'importe quelles initiales. C'est suffisant entre quelques personnes de confiance ; le service refuse déjà les valeurs absurdes. Les scores d'un joueur hors connexion sont renvoyés plus tard.
 
 ## Lancer
 
@@ -37,7 +50,10 @@ npm test                          # les deux
 ```
 index.html            page, menu et templates HTML de chaque jeu
 css/style.css         styles de toute l'application
-js/scores.js          tableaux de scores, saisie du nom, export/import
+js/scores.js          tableaux de scores (Moi / Tous), saisie du nom, export/import
+js/config.js          adresse du classement général
+js/online.js          client du classement général (envoi, file d'attente, cache)
+server/apps-script.gs service du classement (Google Apps Script)
 js/settings.js        réglages et effets sonores
 js/device.js          détection ordinateur / mobile
 js/fx.js              effets visuels partagés (confettis)
