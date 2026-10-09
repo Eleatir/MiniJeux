@@ -9,6 +9,8 @@ const test = base.test.extend({
     page.on('console', m => { if (m.type() === 'error') problems.push('console: ' + m.text()); });
     page.on('response', r => { if (r.status() >= 400) problems.push(r.status() + ' ' + r.url()); });
     await page.addInitScript(() => { try { localStorage.setItem('minijeux.welcomed', '1'); } catch (e) {} });
+    // les tests ne parlent jamais au vrai classement général (les tests qui en ont besoin installent leur faux serveur)
+    await page.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: "const LEADERBOARD_URL = '';" }));
     await use(page);
     base.expect(problems, 'erreurs dans le navigateur').toEqual([]);
   }

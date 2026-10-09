@@ -48,7 +48,7 @@ test('serveur : un renvoi du même score n\'est pas un doublon accepté deux foi
 /* ── client ── */
 let g;
 const FILES = ['js/scores.js', 'js/config.js', 'js/online.js'];
-beforeEach(() => { g = load(FILES); });
+beforeEach(() => { g = load(FILES); g.exec('Online.url = () => ""'); });   // indépendant de la vraie adresse de js/config.js
 
 test('client : sans adresse configurée, rien n\'est envoyé et « Tous » indique que c\'est désactivé', async () => {
   assert.equal(g.run('Online.enabled()'), false);
