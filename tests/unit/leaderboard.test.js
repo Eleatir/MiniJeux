@@ -98,3 +98,14 @@ test('client : un envoi raté est mis en attente puis renvoyé, sans doublon', a
   assert.equal(posted.length, 1); assert.equal(posted[0].v, 42);
   assert.equal(await vm.runInContext('Online.flush()', gg.ctx), 0);
 });
+
+test('client : les scores déjà gagnés sont envoyés une seule fois à l\'activation du classement', async () => {
+  const posted = [];
+  const gg = online(async (url, o) => { posted.push(JSON.parse(o.body)); return { ok: true, json: async () => ({ ok: true }) }; });
+  [10, 50, 30, 20, 40].forEach(v => gg.exec(`scAdd('snake', 'medium', ${v}, 'CED')`));
+  assert.equal(gg.run('Online.syncLocal()'), 3);
+  assert.equal(gg.run('Online.syncLocal()'), 0);
+  assert.equal(await vm.runInContext('Online.flush()', gg.ctx), 3);
+  assert.deepEqual(posted.map(p => p.v), [50, 40, 30]);
+  assert.ok(posted.every(p => p.n === 'CED' && p.game === 'snake' && p.d > 0));
+});
