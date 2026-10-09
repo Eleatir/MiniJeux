@@ -115,12 +115,13 @@ test('fin automatique : quand plus aucune erreur n\'est possible, la grille se t
   await page.evaluate(() => {
     for (let i = 0; i < 81; i++) sd.grid[i] = sd.solution[i];
     sd.started = true; sd.elapsed = 42;
-    const empties = [0, 40, 80];
-    empties.forEach(i => { if (!sd.puzzle[i]) sd.grid[i] = 0; });
+    const empties = [];                                                // trois cases vides qui ne se voient pas entre elles (la grille est tirée au hasard)
+    for (let i = 0; i < 81 && empties.length < 3; i++) if (!sd.puzzle[i] && empties.every(e => !SD_PEERS[e].includes(i))) empties.push(i);
+    empties.forEach(i => { sd.grid[i] = 0; });
     sdRender();
   });
-  const empties = await page.evaluate(() => [0, 40, 80].filter(i => !sd.puzzle[i] && sd.grid[i] === 0));
-  expect(empties.length).toBeGreaterThan(0);
+  const empties = await page.evaluate(() => sd.grid.map((v, i) => (v === 0 ? i : -1)).filter(i => i >= 0));
+  expect(empties.length).toBe(3);
   await cell(page, empties[0]).click();
   await page.keyboard.press(String(await page.evaluate(i => sd.solution[i], empties[0])));
   await expect(page.locator('#sdBanner')).toContainText('Bravo', { timeout: 8000 });

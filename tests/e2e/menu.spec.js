@@ -1,10 +1,10 @@
 const { test, expect, modalReady, openGame } = require('./fixtures');
 
-test('le menu propose les cinq jeux et chacun démarre', async ({ page }) => {
+test('le menu propose les six jeux et chacun démarre', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveTitle('Mini-jeux');
-  await expect(page.locator('.card[data-game]')).toHaveCount(5);
-  for (const [game, title] of [['Wordle', 'Wordle'], ['Démineur', 'Démineur'], ['Snake', 'Snake'], ['Sudoku', 'Sudoku'], ['Solitaire', 'Solitaire']]) {
+  await expect(page.locator('.card[data-game]')).toHaveCount(6);
+  for (const [game, title] of [['Wordle', 'Wordle'], ['Démineur', 'Démineur'], ['Snake', 'Snake'], ['Sudoku', 'Sudoku'], ['Mots fléchés', 'Mots fléchés'], ['Solitaire', 'Solitaire']]) {
     await page.locator('.card', { hasText: game }).click();
     await expect(page).toHaveTitle('Mini-jeux — ' + title);
     await expect(page.locator('#game-shell')).toBeVisible();
@@ -28,7 +28,7 @@ test('le message d\'accueil s\'affiche une seule fois', async ({ browser }) => {
 
 test('les règles sont toujours repliées à l\'ouverture d\'un jeu, et se déplient d\'un clic', async ({ page }) => {
   await page.goto('/');
-  for (const game of ['Wordle', 'Démineur', 'Snake', 'Sudoku', 'Solitaire']) {
+  for (const game of ['Wordle', 'Démineur', 'Snake', 'Sudoku', 'Mots fléchés', 'Solitaire']) {
     await page.locator('.card', { hasText: game }).click();
     await expect(page.locator('details.rules'), game).not.toHaveAttribute('open', '');
     await page.keyboard.press('Escape');

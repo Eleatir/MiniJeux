@@ -43,6 +43,13 @@
       <span class="badge ready" data-badge>▶ en cours</span>
       <p class="card-meta" data-meta></p>
     </div>
+    <div class="card ready" data-game="mots" role="button" tabindex="0" onclick="startGame('mots')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('mots')}">
+      <span class="card-icon">🔤</span>
+      <span class="card-name">Mots fléchés</span>
+      <p class="card-desc">Définitions dans la grille, flèches vers les mots</p>
+      <span class="badge ready" data-badge>▶ en cours</span>
+      <p class="card-meta" data-meta></p>
+    </div>
     <div class="card ready" data-game="solitaire" role="button" tabindex="0" onclick="startGame('solitaire')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('solitaire')}">
       <span class="card-icon">🃏</span>
       <span class="card-name">Solitaire</span>
@@ -188,6 +195,50 @@
   </details>
 </template>
 
+<!-- ══ TEMPLATE MOTS FLÉCHÉS ═════════════════════════════════════════ -->
+<template id="tpl-mots">
+  <div class="ms-header">
+    <span class="ms-title">🔤 Mots fléchés</span>
+    <div class="ms-controls">
+      <select id="mfLevel">
+        <option value="small">Petite — 6 × 7</option>
+        <option value="medium" selected>Moyenne — 7 × 8</option>
+        <option value="large">Grande — 8 × 9</option>
+      </select>
+      <button class="btn" id="mfReset" aria-label="Nouvelle grille">🔄<span class="lbl"> Nouvelle grille</span></button>
+    </div>
+  </div>
+  <div class="ms-stats">
+    <span><span class="ico">⏱</span><span class="lbl">Temps : </span><strong id="mfTime">0:00</strong></span>
+    <span><span class="ico">💡</span><span class="lbl">Aides : </span><strong id="mfHints">0</strong></span>
+    <span><span class="ico">🏆</span><span class="lbl">Record : </span><strong id="mfBest">—</strong></span>
+  </div>
+  <div class="mf-area"><div class="mf-wrap"><div class="mf-grid" id="mfGrid" role="grid" aria-label="Grille de mots fléchés"></div></div></div>
+  <div class="mf-under">
+    <div class="mf-clue-bar" id="mfClue" aria-live="polite" title="Toucher : changer de sens"></div>
+    <div class="mf-tools" id="mfTools">
+      <button class="btn" data-a="turn" title="Changer de sens (Espace)" aria-label="Changer de sens">⇄<span class="lbl"> Sens</span></button>
+      <button class="btn" data-a="check" title="Vérifier : +20 s" aria-label="Vérifier">✔<span class="lbl"> Vérifier</span></button>
+      <button class="btn" data-a="letter" title="Révéler une lettre : +15 s" aria-label="Révéler une lettre">💡<span class="lbl"> Lettre</span></button>
+      <button class="btn" data-a="word" title="Révéler le mot : +45 s" aria-label="Révéler le mot">💡<span class="lbl"> Mot</span></button>
+    </div>
+  </div>
+  <div class="mf-keys only-mobile" id="mfKeys"><div class="mf-krow"><button class="mf-key" data-k="A">A</button><button class="mf-key" data-k="Z">Z</button><button class="mf-key" data-k="E">E</button><button class="mf-key" data-k="R">R</button><button class="mf-key" data-k="T">T</button><button class="mf-key" data-k="Y">Y</button><button class="mf-key" data-k="U">U</button><button class="mf-key" data-k="I">I</button><button class="mf-key" data-k="O">O</button><button class="mf-key" data-k="P">P</button></div><div class="mf-krow"><button class="mf-key" data-k="Q">Q</button><button class="mf-key" data-k="S">S</button><button class="mf-key" data-k="D">D</button><button class="mf-key" data-k="F">F</button><button class="mf-key" data-k="G">G</button><button class="mf-key" data-k="H">H</button><button class="mf-key" data-k="J">J</button><button class="mf-key" data-k="K">K</button><button class="mf-key" data-k="L">L</button><button class="mf-key" data-k="M">M</button></div><div class="mf-krow"><button class="mf-key" data-k="W">W</button><button class="mf-key" data-k="X">X</button><button class="mf-key" data-k="C">C</button><button class="mf-key" data-k="V">V</button><button class="mf-key" data-k="B">B</button><button class="mf-key" data-k="N">N</button><button class="mf-key wide" data-k="back" aria-label="Effacer">⌫</button></div></div>
+  <div class="banner" id="mfBanner"></div>
+  <p class="hint">Clique une case ou une définition &nbsp;·&nbsp; <span class="only-desktop">Écris au clavier &nbsp;·&nbsp; Flèches = se déplacer &nbsp;·&nbsp; Espace = changer de sens</span><span class="only-mobile">⇄ = changer de sens</span></p>
+  <details class="rules">
+    <summary>Règles et fonctionnement</summary>
+    <ul>
+      <li><strong>But :</strong> remplir toutes les cases blanches avec des lettres, en suivant les définitions écrites dans les cases grises.</li>
+      <li><strong>Flèches :</strong> → le mot commence dans la case à droite de la définition et se lit vers la droite ; ↓ il commence dans la case en dessous et se lit vers le bas. Une case peut contenir deux définitions.</li>
+      <li><strong>Jouer :</strong> choisis une case ou touche une définition, puis écris les lettres : le curseur avance tout seul. Touche une case déjà choisie (ou ⇄ / Espace) pour changer de sens. La définition complète s'affiche sous la grille, avec le nombre de lettres.</li>
+      <li class="extra"><strong>Accents :</strong> ignorés. Écris « e » pour é, è ou ê.</li>
+      <li><strong>Aides :</strong> ✔ marque les lettres fausses en rouge (+20 s) ; 💡 Lettre révèle la case choisie (+15 s) ; 💡 Mot révèle tout le mot (+45 s).</li>
+      <li class="extra"><strong>Score :</strong> ton temps, aides comprises, à la victoire, par taille de grille. Les grilles sont inventées à chaque partie.</li>
+    </ul>
+  </details>
+</template>
+
 <!-- ══ TEMPLATE SOLITAIRE ════════════════════════════════════════════ -->
 <template id="tpl-solitaire">
   <div class="ms-header">
@@ -263,6 +314,8 @@
 <script src="js/games/wordle.js"></script>
 <script src="js/games/snake.js"></script>
 <script src="js/games/sudoku.js"></script>
+<script src="js/games/mots-words.js"></script>
+<script src="js/games/mots.js"></script>
 <script src="js/games/solitaire.js"></script>
 <script src="js/app.js"></script>
 </body>

@@ -244,6 +244,43 @@
   .sd-pad .btn.done { opacity: 0.3; }
   .sd-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; max-width: 520px; }
   .sd-tools .btn.on { background: var(--blue); color: var(--surface); border-color: var(--blue); }
+
+  /* ── MOTS FLÉCHÉS ─────────────────────────── */
+  :root { --mf-clue: #e4e8ee; --mf-word: #dbe8f8; --mf-sel: #b6d4f5; }
+  @media (prefers-color-scheme: dark) { :root { --mf-clue: #343a42; --mf-word: #2a4560; --mf-sel: #2f5b8f; } }
+  .mf-wrap { container-type: inline-size; width: 100%; max-width: calc(var(--cols, 7) * 76px); }
+  .mf-grid {
+    display: grid; grid-template-columns: repeat(var(--cols, 7), 1fr); grid-template-rows: repeat(var(--rows, 8), 1fr);
+    aspect-ratio: var(--cols, 7) / var(--rows, 8);
+    border: 2px solid var(--text); border-radius: 6px; overflow: hidden; background: var(--surface); user-select: none;
+  }
+  .mf-cell, .mf-clue { min-width: 0; min-height: 0; overflow: hidden; border-right: 1px solid var(--border2); border-bottom: 1px solid var(--border2); }
+  .mf-cell {
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    font-size: calc(100cqw / var(--cols, 7) * 0.5); font-weight: 600; color: var(--blue); background: var(--surface);
+  }
+  .mf-cell.word { background: var(--mf-word); }
+  .mf-cell.sel { background: var(--mf-sel); }
+  .mf-cell.rev { color: var(--text); }
+  .mf-cell.bad { color: var(--red-text); background: var(--red-bg); }
+  .mf-clue { display: flex; flex-direction: column; background: var(--mf-clue); font-size: calc(100cqw / var(--cols, 7) * 0.16); line-height: 1.12; }
+  .mf-q { flex: 1 1 0; min-height: 0; position: relative; display: flex; align-items: center; padding: 1px 12% 1px 3px; cursor: pointer; overflow: hidden; }
+  .mf-clue.two .mf-q + .mf-q { border-top: 1px solid var(--border2); }
+  .mf-q b { font-weight: 500; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; overflow: hidden; hyphens: auto; overflow-wrap: break-word; }
+  .mf-clue.two .mf-q b { -webkit-line-clamp: 2; }
+  .mf-q i { font-style: normal; position: absolute; right: 2px; bottom: 0; font-size: 1.5em; line-height: 1; color: var(--blue); }
+  .mf-q.act { background: var(--mf-word); }
+  .mf-clue-bar { max-width: calc(var(--cols, 7) * 76px); min-height: 2.6em; margin-top: 10px; padding: 8px 12px; display: flex; align-items: center; background: var(--surface); border: 0.5px solid var(--border2); border-radius: var(--radius); font-size: 14px; }
+  .mf-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .mf-clue-bar { cursor: pointer; }
+  .mf-keys { margin-top: 8px; }
+  .mf-krow { display: flex; gap: 4px; justify-content: center; margin-bottom: 4px; }
+  .mf-key {
+    flex: 1 1 0; min-width: 0; height: 40px; padding: 0; border-radius: 6px; border: 0.5px solid var(--border);
+    background: var(--surface2); color: var(--text); font-size: 15px; font-weight: 500; cursor: pointer; user-select: none; touch-action: manipulation;
+  }
+  .mf-key.wide { flex: 1.6 1 0; font-size: 16px; }
+  .mf-key:active { transform: scale(0.95); }
   .banner .btn { margin-left: 10px; }
   .rules {
     margin-top: 1rem; max-width: 720px; padding: 10px 14px;
@@ -408,6 +445,8 @@
   [data-device="mobile"] .sc-arrow { padding: 8px 18px; font-size: 22px; }
   [data-device="mobile"] .sc-panel { padding: 16px 14px; }
   [data-device="mobile"] .sc-tab, [data-device="mobile"] .sc-mode { padding: 8px 12px; font-size: 13px; }
+  [data-device="mobile"] .sc-tab { padding: 8px 10px; }
+  [data-device="mobile"] .sc-tab:not(.on) .tl { display: none; }   /* six jeux : seule l'étiquette de l'onglet choisi est écrite */
   [data-device="mobile"] .set-row { padding: 14px; }
   [data-device="mobile"] .rules { font-size: 14px; }
   [data-device="mobile"] .ms-stats, [data-device="mobile"] .sn-stats { flex-wrap: wrap; gap: 6px 14px; }
@@ -528,6 +567,18 @@
   [data-device="mobile"] .sd-pad .btn { min-height: 48px; padding: 0; font-size: 20px; }
   [data-device="mobile"] .sd-tools { flex: none; margin: 0; flex-wrap: nowrap; gap: 6px; max-width: none; }
   [data-device="mobile"] .sd-tools .btn { flex: 1; min-width: 0; padding: 0; font-size: 20px; }
+
+  /* Mots fléchés : la grille prend la place restante (cases plus larges que hautes si besoin), clavier de lettres dessous */
+  [data-device="mobile"] .mf-area { flex: 1 1 0; min-height: 0; container-type: size; display: flex; align-items: center; justify-content: center; }
+  [data-device="mobile"] .mf-wrap { width: min(100cqw, calc(100cqh * var(--cols, 7) / var(--rows, 8))); max-width: none; flex: none; }
+  [data-device="mobile"] .mf-under { flex: none; display: flex; gap: 6px; height: 40px; }
+  [data-device="mobile"] .mf-clue-bar { flex: 1; min-width: 0; max-width: none; margin: 0; min-height: 0; padding: 3px 10px; font-size: 13px; line-height: 1.2; overflow: hidden; cursor: pointer; }
+  [data-device="mobile"] .mf-tools [data-a="turn"] { display: none; }   /* sur téléphone, toucher la définition change de sens */
+  [data-device="mobile"] .mf-keys { flex: none; margin: 0; }
+  [data-device="mobile"] .mf-krow { margin-bottom: 3px; gap: 3px; }
+  [data-device="mobile"] .mf-key { height: clamp(32px, 5.6dvh, 44px); font-size: 16px; }
+  [data-device="mobile"] .mf-tools { flex: none; margin: 0; flex-wrap: nowrap; gap: 6px; }
+  [data-device="mobile"] .mf-tools .btn { width: 40px; min-width: 0; padding: 0; font-size: 18px; }
 
   /* Solitaire : le plateau occupe la hauteur restante ; les cartes empilées se resserrent si besoin (js/games/solitaire.js) */
   [data-device="mobile"] .sol-board { flex: 1 1 0; min-height: 0; max-width: none; overflow: hidden; }
