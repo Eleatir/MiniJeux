@@ -83,6 +83,7 @@
 
   /* ── GAME SHELL ───────────────────────────── */
   #game-shell { max-width: 720px; margin: 0 auto; display: none; }
+  #game-shell.on { display: block; }
   #game-shell.wide { max-width: 1040px; }
   .back-btn {
     display: inline-flex; align-items: center; gap: 6px;
@@ -384,11 +385,6 @@
   .ms-flagbar .btn.on { background: var(--red-bg); color: var(--red-text); border-color: var(--red-text); }
   .cell { -webkit-touch-callout: none; }
 
-  /* Snake : manette en croix */
-  .sn-pad { grid-template-areas: ". u ." "l p r" ". d ."; grid-template-columns: repeat(3, 64px); grid-auto-rows: 56px; gap: 8px; margin: 12px 0 0; justify-content: center; }
-  [data-device="mobile"] .sn-pad { display: grid; }
-  .sn-pad .btn { font-size: 20px; padding: 0; touch-action: none; }
-
   /* Appareil mobile : zones à toucher plus grandes, marges sûres (encoche, barre de navigation) */
   [data-device="mobile"] body {
     padding: max(1rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(1.25rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
@@ -440,4 +436,106 @@
   }
   .pause-overlay p { font-size: 24px; font-weight: 500; }
   .pause-overlay .btn.sc-ok { background: #ffd24a; color: #101018; border-color: #ffd24a; font-weight: 600; padding: 10px 22px; font-size: 16px; }
+
+  /* ════════════════════════════════════════════════════════════════
+     MOBILE : tout tient dans l'écran, sans jamais défiler verticalement
+     Page = hauteur de l'écran (100dvh) ; barre, commandes et règles ont une hauteur fixe,
+     la grille de jeu prend tout le reste et se dimensionne selon la place disponible.
+  ═══════════════════════════════════════════════════════════════════ */
+  .shell-title, .ico { display: none; }
+  html[data-device="mobile"] { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  [data-device="mobile"] body {
+    height: 100dvh; min-height: 0; overflow: hidden; overscroll-behavior: none;
+    display: flex; flex-direction: column;
+    padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  }
+  [data-device="mobile"] .lbl { display: none; }
+  [data-device="mobile"] .ico { display: inline; margin-right: 3px; }
+  [data-device="mobile"] .shell-title { display: block; flex: 1; text-align: center; font-weight: 500; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* barre du haut */
+  [data-device="mobile"] #game-shell.on { flex: 1; min-height: 0; max-width: none; width: 100%; display: flex; flex-direction: column; }
+  [data-device="mobile"] .shell-bar { flex: none; margin-bottom: 6px; gap: 6px; }
+  [data-device="mobile"] .back-btn { margin: 0; padding: 0 10px 0 0; min-width: 44px; min-height: 44px; font-size: 24px; display: flex; align-items: center; }
+  [data-device="mobile"] .shell-actions { gap: 6px; }
+  [data-device="mobile"] .shell-actions .btn { min-width: 44px; padding: 0; font-size: 18px; }
+
+  /* contenu du jeu : colonne qui remplit l'espace restant */
+  [data-device="mobile"] #game-content { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+  [data-device="mobile"] .ms-title, [data-device="mobile"] .sn-title, [data-device="mobile"] .wd-title { display: none; }
+  [data-device="mobile"] .ms-header, [data-device="mobile"] .sn-header, [data-device="mobile"] .wd-header { flex: none; margin: 0; }
+  [data-device="mobile"] .ms-controls, [data-device="mobile"] .sn-controls, [data-device="mobile"] .wd-controls { width: 100%; display: flex; gap: 6px; }
+  [data-device="mobile"] .ms-controls select, [data-device="mobile"] .sn-controls select, [data-device="mobile"] .wd-controls select { flex: 1; min-width: 0; }
+  [data-device="mobile"] .ms-controls .btn, [data-device="mobile"] .sn-controls .btn, [data-device="mobile"] .wd-controls .btn { min-width: 44px; padding: 0 10px; }
+  [data-device="mobile"] .ms-stats, [data-device="mobile"] .sn-stats { flex: none; margin: 0; font-size: 13px; gap: 4px 12px; align-items: center; flex-wrap: nowrap; }
+  [data-device="mobile"] .hint { display: none; }
+  [data-device="mobile"] .banner { position: absolute; left: 0; right: 0; bottom: 48px; margin: 0; z-index: 20; box-shadow: 0 4px 18px rgba(0,0,0,0.25); font-size: 13px; }
+  [data-device="mobile"] .pause-overlay { min-height: 0; }
+
+  /* règles : un onglet replié en bas (hauteur fixe) ; ouvert, le texte s'affiche par-dessus le jeu, sans rien déplacer */
+  [data-device="mobile"] details.rules { flex: none; height: 40px; position: relative; margin: 0; max-width: none; padding: 0; font-size: 13px; }
+  [data-device="mobile"] details.rules summary { height: 40px; padding: 0 12px; display: flex; align-items: center; }
+  [data-device="mobile"] details.rules ul { margin: 0; }
+  [data-device="mobile"] details.rules li.extra { display: none; }
+  [data-device="mobile"] details.rules[open] ul {
+    position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 60;
+    margin: 0; padding: 12px 14px 12px 30px; max-height: calc(100dvh - 130px); overflow-y: auto;
+    background: var(--surface); border: 0.5px solid var(--border2); border-radius: var(--radius); box-shadow: 0 -8px 30px rgba(0,0,0,0.3);
+  }
+
+  /* menu */
+  [data-device="mobile"] #menu { flex: 1; min-height: 0; max-width: none; width: 100%; display: flex; flex-direction: column; }
+  [data-device="mobile"] #menu[style*="none"] { display: none; }
+  [data-device="mobile"] .hub-title { flex: none; margin-bottom: 8px; }
+  [data-device="mobile"] .hub-sub { display: none; }
+  [data-device="mobile"] .menu-bar { flex: none; display: flex; gap: 8px; margin-bottom: 8px; }
+  [data-device="mobile"] .menu-bar .btn { flex: 1; }
+  [data-device="mobile"] .cards-grid { flex: 1; min-height: 0; grid-template-columns: repeat(2, 1fr); grid-auto-rows: minmax(0, 1fr); gap: 8px; }
+  [data-device="mobile"] .card { padding: 10px; gap: 3px; min-height: 0; overflow: hidden; }
+  [data-device="mobile"] .card-icon { font-size: 24px; }
+  [data-device="mobile"] .card-name { font-size: 15px; }
+  [data-device="mobile"] .card-desc { font-size: 12px; line-height: 1.35; }
+  [data-device="mobile"] .card-meta { font-size: 11px; }
+
+  /* Wordle : la grille se dimensionne selon la place restante au-dessus du clavier */
+  [data-device="mobile"] .wd-msg { flex: none; margin: 0; min-height: 18px; text-align: center; }
+  [data-device="mobile"] .wd-grid { flex: 1 1 0; min-height: 0; margin: 0; container-type: size; align-items: center; justify-content: center; }
+  [data-device="mobile"] .wd-tile {
+    --t: min(calc((100cqw - (var(--wd-n, 5) - 1) * 6px) / var(--wd-n, 5)), calc((100cqh - 30px) / 6), 56px);
+    width: var(--t); height: var(--t); aspect-ratio: auto; font-size: calc(var(--t) * 0.46);
+  }
+  [data-device="mobile"] .wd-keyboard { flex: none; margin: 0; }
+  [data-device="mobile"] .wd-key { height: clamp(38px, 7.2dvh, 54px); font-size: 15px; }
+  [data-device="mobile"] .wd-key.wide { font-size: 11px; }
+
+  /* Démineur : cases dimensionnées pour que les lignes tiennent en hauteur (la grille « Difficile » défile en largeur seulement) */
+  [data-device="mobile"] .grid-wrap { flex: 1 1 0; min-height: 0; container-type: size; overflow-x: auto; overflow-y: hidden; display: flex; }
+  [data-device="mobile"] .ms-grid { --cell: max(22px, min(calc(100cqw / var(--cols, 9)), calc(100cqh / var(--rows, 9)), 42px)); margin: auto; flex: none; }
+  [data-device="mobile"] .cell { font-size: calc(var(--cell) * 0.5); }
+  [data-device="mobile"] .ms-flagbar { margin: 0 0 0 auto; }
+  [data-device="mobile"] .ms-flagbar .btn { min-height: 32px; padding: 0 10px; font-size: 13px; }
+
+  /* Snake : le terrain prend toute la place, la page est figée (on joue uniquement au glissement du doigt) */
+  [data-device="mobile"] .sn-area { flex: 1 1 0; min-height: 0; container-type: size; display: flex; align-items: center; justify-content: center; }
+  [data-device="mobile"] #snCanvas { width: min(100cqw, 100cqh); height: min(100cqw, 100cqh); max-width: none; }
+  [data-device="mobile"] #game-shell[data-game="snake"] { touch-action: none; user-select: none; -webkit-user-select: none; }
+  [data-device="mobile"] #game-shell[data-game="snake"] .shell-bar, [data-device="mobile"] #game-shell[data-game="snake"] select, [data-device="mobile"] #game-shell[data-game="snake"] button { touch-action: manipulation; }
+
+  /* Sudoku : grille carrée aussi grande que possible, pavé et outils dessous */
+  [data-device="mobile"] .sd-area { flex: 1 1 0; min-height: 0; container-type: size; display: flex; align-items: center; justify-content: center; }
+  [data-device="mobile"] .sd-wrap { width: min(100cqw, 100cqh); max-width: none; flex: none; }
+  [data-device="mobile"] .sd-pad { flex: none; margin: 0; gap: 4px; max-width: none; }
+  [data-device="mobile"] .sd-pad .btn { min-height: 48px; padding: 0; font-size: 20px; }
+  [data-device="mobile"] .sd-tools { flex: none; margin: 0; flex-wrap: nowrap; gap: 6px; max-width: none; }
+  [data-device="mobile"] .sd-tools .btn { flex: 1; min-width: 0; padding: 0; font-size: 20px; }
+
+  /* Solitaire : le plateau occupe la hauteur restante ; les cartes empilées se resserrent si besoin (js/games/solitaire.js) */
+  [data-device="mobile"] .sol-board { flex: 1 1 0; min-height: 0; max-width: none; overflow: hidden; }
+
+  /* fenêtres (scores, réglages, saisie du nom) : jamais plus hautes que l'écran */
+  [data-device="mobile"] .sc-panel { max-height: 96dvh; overflow-y: auto; }
+  [data-device="mobile"] .sc-hint { display: none; }
+  [data-device="mobile"] .sc-row { padding: 2px 6px; font-size: 13px; }
+  [data-device="mobile"] .sc-table { margin-top: 8px; }
+  [data-device="mobile"] .sc-actions { margin-top: 10px; }
 

@@ -205,6 +205,7 @@ function msRender() {
   const g=document.getElementById('msGrid');
   g.style.gridTemplateColumns=`repeat(${msCfg.cols},var(--cell))`;
   g.style.setProperty('--cols', msCfg.cols);
+  g.style.setProperty('--rows', msCfg.rows);
   g.innerHTML='';
   for (let r=0;r<msCfg.rows;r++) for (let c=0;c<msCfg.cols;c++) {
     const d=document.createElement('div');

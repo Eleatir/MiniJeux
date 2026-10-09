@@ -127,7 +127,7 @@ test('un ordinateur est détecté comme tel : pas de commandes tactiles', async 
   await expect(page.locator('html')).toHaveAttribute('data-device', 'desktop');
   expect(await page.evaluate(() => Device.detect())).toBe('desktop');
   await page.locator('.card', { hasText: 'Snake' }).click();
-  await expect(page.locator('#snPad')).toBeHidden();
+  await expect(page.locator('#snPad')).toHaveCount(0);
   await expect(page.locator('.sn-overlay .only-desktop')).toBeVisible();
   await expect(page.locator('.sn-overlay .only-mobile')).toBeHidden();
 });
@@ -141,7 +141,7 @@ test('on peut forcer l\'affichage mobile depuis les réglages, et revenir en aut
   await expect(page.locator('html')).toHaveAttribute('data-device', 'mobile');
   await page.keyboard.press('Escape');
   await page.locator('.card', { hasText: 'Snake' }).click();
-  await expect(page.locator('#snPad')).toBeVisible();
+  await expect(page.locator('.sn-overlay .only-mobile')).toBeVisible();     // textes et commandes du mode mobile
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '⚙ Réglages' }).click();
   await modalReady(page);

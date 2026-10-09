@@ -410,6 +410,18 @@ function solSlot(z, i, label) {
   return d;
 }
 
+// Sur mobile la zone de jeu a une hauteur imposée (pas de défilement) : on resserre les cartes empilées jusqu'à ce que tout tienne.
+// Sur ordinateur la zone s'étire avec son contenu : rien à faire.
+function solFit(board, tab, maxOff) {
+  if (board.scrollHeight <= board.clientHeight + 1) return;
+  let f = 1;
+  const apply = () => {
+    board.querySelectorAll('.sol-tab .sol-card').forEach(c => { c.style.top = (+c.dataset.off * f) + 'cqw'; });
+    tab.style.paddingBottom = (maxOff * f + 2) + 'cqw';
+  };
+  while (board.scrollHeight > board.clientHeight + 1 && f > 0.5) { f -= 0.05; apply(); }
+}
+
 function solRender() {
   const board = document.getElementById('solBoard');
   board.innerHTML = '';
@@ -452,7 +464,9 @@ function solRender() {
     let off = 0;
     col.forEach((c, k) => {
       const selected = solSel && solSel.from === 't' && solSel.i === i && k >= col.length - solSel.n;
-      slot.appendChild(solCardEl(c, 't', i, k, off, selected));
+      const el = solCardEl(c, 't', i, k, off, selected);
+      el.dataset.off = off;
+      slot.appendChild(el);
       off += c.up ? SOL_UP : SOL_DOWN;
     });
     maxOff = Math.max(maxOff, off - (col.length && col[col.length - 1].up ? SOL_UP : SOL_DOWN));
@@ -460,6 +474,7 @@ function solRender() {
   });
   tab.style.paddingBottom = (maxOff + 2) + 'cqw';
   board.appendChild(tab);
+  solFit(board, tab, maxOff);
 
   document.getElementById('solMoves').textContent = sol.moves;
   solShowTime();
@@ -487,6 +502,9 @@ function solRender() {
 }
 
 
+// L'écran change de taille (rotation, clavier…) : on réajuste les cartes
+function solRefit() { if (sol && document.getElementById('solBoard')) solRender(); }
+
 // Raccourcis : Ctrl+Z annuler, N nouvelle donne
 function solKeyHandler(e) {
   if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'z') { e.preventDefault(); if (!solAuto) solUndo(); return; }
@@ -496,8 +514,8 @@ function solKeyHandler(e) {
 
 GAMES.solitaire = {
   wide: true,   // cartes plus grandes sur grand écran
-  start(saved) { document.addEventListener('keydown', solKeyHandler); initSolitaire(saved); },
-  stop()  { solStop(); document.removeEventListener('keydown', solKeyHandler); },
+  start(saved) { document.addEventListener('keydown', solKeyHandler); window.addEventListener('resize', solRefit); initSolitaire(saved); },
+  stop()  { solStop(); document.removeEventListener('keydown', solKeyHandler); window.removeEventListener('resize', solRefit); },
   inProgress() { return !!sol && sol.moves > 0 && !sol.won; },
   canPause() { return !!sol && !sol.won && !solAuto; },
   pause() { solClockStop(); },

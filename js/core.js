@@ -63,12 +63,14 @@ function startGame(id) {
   currentGame = activeGame = id;
   document.getElementById('menu').style.display = 'none';
   const shell = document.getElementById('game-shell');
-  shell.style.display = 'block';
+  shell.classList.add('on');
   shell.classList.toggle('wide', !!GAMES[id].wide);
   const content = document.getElementById('game-content');
   content.innerHTML = '';
   content.appendChild(document.getElementById('tpl-' + id).content.cloneNode(true));
   document.title = 'Mini-jeux — ' + SC_GAMES[id].label;
+  shell.dataset.game = id;
+  document.getElementById('shellTitle').textContent = SC_GAMES[id].icon + ' ' + SC_GAMES[id].label;
   pauseUI();
   const saved = GAMES[id].save ? Save.load(id) : null;
   GAMES[id].start(saved);
@@ -131,8 +133,8 @@ function confirmAbandon(fn, okLabel) {
 function goMenu() {
   scClose();
   stopGame();
-  document.getElementById('game-shell').style.display = 'none';
-  document.getElementById('menu').style.display = 'block';
+  document.getElementById('game-shell').classList.remove('on');
+  document.getElementById('menu').style.display = '';
   document.title = 'Mini-jeux';
   menuRefresh();
 }
