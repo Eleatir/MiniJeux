@@ -26,4 +26,34 @@ async function openGame(page, name) {
   await page.locator('.card', { hasText: name }).click();
 }
 
-module.exports = { test, expect: base.expect, modalReady, openGame };
+// ── gestes tactiles réels (événements touch envoyés au navigateur via le protocole de débogage) ──
+async function touchSession(page) {
+  return page.context().newCDPSession(page);
+}
+const center = async locator => {
+  const b = await locator.boundingBox();
+  return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+};
+// Glisse un doigt d'un point à un autre (points {x, y}, ou locators)
+async function touchDrag(page, from, to, { steps = 8, hold = 0 } = {}) {
+  const client = await touchSession(page);
+  const a = from.x === undefined ? await center(from) : from;
+  const b = to.x === undefined ? await center(to) : to;
+  const send = (type, p) => client.send('Input.dispatchTouchEvent', { type, touchPoints: p ? [{ x: p.x, y: p.y }] : [] });
+  await send('touchStart', a);
+  if (hold) await page.waitForTimeout(hold);
+  for (let i = 1; i <= steps; i++) await send('touchMove', { x: a.x + (b.x - a.x) * i / steps, y: a.y + (b.y - a.y) * i / steps });
+  await send('touchEnd');
+  await client.detach();
+}
+// Appui long sur un élément
+async function touchHold(page, locator, ms = 700) {
+  const client = await touchSession(page);
+  const p = await center(locator);
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: p.x, y: p.y }] });
+  await page.waitForTimeout(ms);
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await client.detach();
+}
+
+module.exports = { test, expect: base.expect, modalReady, openGame, touchDrag, touchHold };

@@ -116,9 +116,9 @@
   .sn-controls { display: flex; gap: 8px; align-items: center; }
   .sn-stats { display: flex; gap: 16px; margin-bottom: 1rem; font-size: 14px; color: var(--text2); }
   .sn-stats strong { font-weight: 500; color: var(--text); }
-  .sn-wrap { position: relative; display: inline-block; }
+  .sn-wrap { position: relative; display: inline-block; max-width: 100%; }
   #snCanvas {
-    display: block;
+    display: block; max-width: 100%; height: auto; touch-action: none;
     border: 0.5px solid var(--border2);
     border-radius: var(--radius);
     background: var(--surface);
@@ -147,8 +147,9 @@
     border: 0.5px solid var(--border2);
     border-radius: var(--radius); overflow: hidden;
   }
+  .ms-grid { --cell: 32px; }
   .cell {
-    width: 32px; height: 32px;
+    width: var(--cell); height: var(--cell);
     border: 0.5px solid var(--border);
     display: flex; align-items: center; justify-content: center;
     font-size: 13px; font-weight: 500; cursor: pointer;
@@ -361,3 +362,73 @@
   :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
   .card:focus-visible { outline-offset: 0; border-color: var(--blue); }
   .sol-card:focus-visible, .wd-key:focus-visible { outline-offset: -2px; }
+
+  /* ════════════════════════════════════════════
+     ADAPTATION À L'APPAREIL
+     <html data-device="mobile|desktop"> (voir js/device.js) + tailles d'écran étroites
+  ════════════════════════════════════════════ */
+  body { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }   /* pas de zoom au double toucher */
+  .only-mobile { display: none; }
+  [data-device="mobile"] .only-mobile { display: revert; }
+  [data-device="mobile"] .only-desktop { display: none; }
+
+  /* Wordle : les tuiles et le clavier se réduisent pour tenir sur la largeur de l'écran */
+  .wd-tile { width: min(48px, calc((100vw - 3rem - (var(--wd-n, 5) - 1) * 6px) / var(--wd-n, 5))); height: auto; aspect-ratio: 1; }
+  .wd-keyboard { width: 100%; }
+  .wd-kb-row { width: 100%; }
+  .wd-key { flex: 1 1 0; min-width: 0; max-width: 46px; padding: 0 2px; }
+  .wd-key.wide { flex: 1.7 1 0; max-width: 66px; min-width: 0; }
+
+  /* Démineur : bouton drapeau */
+  .ms-flagbar { margin-bottom: 10px; }
+  [data-device="mobile"] .ms-flagbar { display: block; }
+  .ms-flagbar .btn.on { background: var(--red-bg); color: var(--red-text); border-color: var(--red-text); }
+  .cell { -webkit-touch-callout: none; }
+
+  /* Snake : manette en croix */
+  .sn-pad { grid-template-areas: ". u ." "l p r" ". d ."; grid-template-columns: repeat(3, 64px); grid-auto-rows: 56px; gap: 8px; margin: 12px 0 0; justify-content: center; }
+  [data-device="mobile"] .sn-pad { display: grid; }
+  .sn-pad .btn { font-size: 20px; padding: 0; touch-action: none; }
+
+  /* Appareil mobile : zones à toucher plus grandes, marges sûres (encoche, barre de navigation) */
+  [data-device="mobile"] body {
+    padding: max(1rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(1.25rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+  }
+  [data-device="mobile"] .btn, [data-device="mobile"] select { min-height: 44px; padding: 8px 14px; font-size: 15px; }
+  [data-device="mobile"] select { font-size: 16px; }                 /* évite le zoom automatique d'iOS à l'ouverture d'une liste */
+  [data-device="mobile"] .back-btn { padding: 10px 0; font-size: 15px; }
+  [data-device="mobile"] .hub-title { font-size: 24px; }
+  [data-device="mobile"] .cards-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  [data-device="mobile"] .card { padding: 1rem 0.85rem; }
+  [data-device="mobile"] .card-desc { font-size: 12px; }
+  [data-device="mobile"] .card .badge { top: 8px; right: 8px; }
+  [data-device="mobile"] .ms-grid { --cell: clamp(22px, calc((100vw - 1.5rem) / var(--cols, 9)), 40px); }
+  [data-device="mobile"] .cell { font-size: 14px; }
+  [data-device="mobile"] .wd-key { height: 54px; font-size: 15px; }
+  [data-device="mobile"] .wd-key.wide { font-size: 11px; }
+  [data-device="mobile"] .sol-card { touch-action: none; }          /* le glisser-déposer des cartes ne fait pas défiler la page */
+  [data-device="mobile"] .sd-pad { gap: 4px; }
+  [data-device="mobile"] .sd-pad .btn { min-height: 52px; padding: 0; font-size: 20px; }
+  [data-device="mobile"] .sd-tools .btn { flex: 1 1 calc(33% - 8px); }
+  [data-device="mobile"] .sc-arrow { padding: 8px 18px; font-size: 22px; }
+  [data-device="mobile"] .sc-panel { padding: 16px 14px; }
+  [data-device="mobile"] .sc-tab, [data-device="mobile"] .sc-mode { padding: 8px 12px; font-size: 13px; }
+  [data-device="mobile"] .set-row { padding: 14px; }
+  [data-device="mobile"] .rules { font-size: 14px; }
+  [data-device="mobile"] .ms-stats, [data-device="mobile"] .sn-stats { flex-wrap: wrap; gap: 6px 14px; }
+
+  /* Pas d'effets de survol « collants » sur écran tactile */
+  @media (hover: none) {
+    .card.ready:hover { transform: none; border-color: var(--border); }
+    .cell:hover:not(.revealed) { background: var(--surface2); }
+    .wd-key:hover { background: var(--surface2); }
+  }
+
+  /* Écrans étroits (téléphone, fenêtre réduite), quel que soit l'appareil */
+  @media (max-width: 520px) {
+    .ms-header, .sn-header, .wd-header { gap: 10px; }
+    .ms-title, .sn-title, .wd-title { font-size: 20px; }
+    .sol-board .hint { font-size: 11px; }
+    .sc-row { grid-template-columns: 30px 48px 1fr 70px; }
+  }
+

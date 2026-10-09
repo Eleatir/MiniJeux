@@ -114,3 +114,33 @@ test('Échap n\'ouvre pas deux fois la confirmation et ferme d\'abord la fenêtr
   await page.keyboard.press('Enter');                           // confirme
   await expect(page.locator('#menu')).toBeVisible();
 });
+
+test('un ordinateur est détecté comme tel : pas de commandes tactiles', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('data-device', 'desktop');
+  expect(await page.evaluate(() => Device.detect())).toBe('desktop');
+  await page.locator('.card', { hasText: 'Snake' }).click();
+  await expect(page.locator('#snPad')).toBeHidden();
+  await expect(page.locator('.sn-overlay .only-desktop')).toBeVisible();
+  await expect(page.locator('.sn-overlay .only-mobile')).toBeHidden();
+});
+
+test('on peut forcer l\'affichage mobile depuis les réglages, et revenir en automatique', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '⚙ Réglages' }).click();
+  await modalReady(page);
+  await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowDown');   // « Affichage »
+  await page.keyboard.press('Space');                                    // auto → mobile
+  await expect(page.locator('html')).toHaveAttribute('data-device', 'mobile');
+  await page.keyboard.press('Escape');
+  await page.locator('.card', { hasText: 'Snake' }).click();
+  await expect(page.locator('#snPad')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '⚙ Réglages' }).click();
+  await modalReady(page);
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Space');                                    // mobile → ordinateur
+  await page.keyboard.press('Space');                                    // ordinateur → auto
+  await expect(page.locator('html')).toHaveAttribute('data-device', 'desktop');
+  expect(await page.evaluate(() => Settings.get('device'))).toBe('auto');
+});

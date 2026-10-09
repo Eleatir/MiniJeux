@@ -28,12 +28,13 @@ function fakeElement() {
 
 /**
  * @param {string[]} files  scripts à charger, relatifs à la racine du dépôt, dans l'ordre de index.html
+ * @param {object} overrides  éléments du faux navigateur à remplacer (navigator, matchMedia…)
  * @returns {{ run: (code: string) => any, ctx: object, storage: object }}
  */
-function load(files) {
+function load(files, overrides = {}) {
   const storage = fakeStorage();
   const document = {
-    documentElement: { classList: { toggle() {}, add() {}, remove() {} } },
+    documentElement: { classList: { toggle() {}, add() {}, remove() {} }, getAttribute: () => null, setAttribute() {} },
     addEventListener() {}, removeEventListener() {},
     getElementById: () => null, querySelector: () => null, querySelectorAll: () => [],
     createElement: () => fakeElement(), body: fakeElement(),
@@ -43,9 +44,11 @@ function load(files) {
     document, localStorage: storage, console,
     setTimeout, clearTimeout, setInterval, clearInterval,
     matchMedia: () => ({ matches: false }),
-    addEventListener() {}, removeEventListener() {},
+    addEventListener() {}, removeEventListener() {}, dispatchEvent() {},
+    Event: class { constructor(type) { this.type = type; } },
     navigator: {}
   };
+  Object.assign(sandbox, overrides);
   sandbox.window = sandbox;
   const ctx = vm.createContext(sandbox);
   for (const f of files) vm.runInContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), ctx, { filename: f });
