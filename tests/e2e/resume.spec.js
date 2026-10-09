@@ -68,25 +68,36 @@ test('Solitaire : une complétion automatique interrompue reprend à la réouver
   await expect(page.locator('#solBanner')).toContainText('Bravo', { timeout: 15000 });
 });
 
-test('2048 : grille et score repris', async ({ page }) => {
-  await openGame(page, '2048');
-  await page.evaluate(() => { tfBoard = [[2, 4, 8, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 16]]; tfScore = 300; tfRender(); });
-  await page.keyboard.press('ArrowLeft');                              // un coup valide pour démarrer vraiment la partie
-  const before = await page.evaluate(() => JSON.stringify([tfBoard, tfScore]));
+test('Sudoku : grille, chiffres, notes, indices et temps repris', async ({ page }) => {
+  await openGame(page, 'Sudoku');
+  await page.selectOption('#sdLevel', 'easy');
+  await page.evaluate(() => {
+    const empties = sd.puzzle.map((v, i) => (v ? -1 : i)).filter(i => i >= 0);
+    sdSelect(empties[0]); sdEnter(sd.solution[empties[0]]);            // un chiffre posé
+    sdSelect(empties[1]);                                              // l'indice ira dans une autre case
+  });
+  await page.keyboard.press('h');                                      // un indice
+  await page.waitForFunction(() => sd.elapsed >= 1);
+  const before = await page.evaluate(() => JSON.stringify([sd.puzzle, sd.grid, sd.notes, sd.hints, sd.level]));
   await page.keyboard.press('Escape');
-  await card(page, '2048').click();
-  expect(await page.evaluate(() => JSON.stringify([tfBoard, tfScore]))).toBe(before);
-  await expect(page.locator('#tfScore')).toHaveText(String(JSON.parse(before)[1]));
+  await expect(card(page, 'Sudoku').locator('[data-badge]')).toBeVisible();
+  await card(page, 'Sudoku').click();
+  expect(await page.evaluate(() => JSON.stringify([sd.puzzle, sd.grid, sd.notes, sd.hints, sd.level]))).toBe(before);
+  expect(await page.evaluate(() => sd.elapsed)).toBeGreaterThanOrEqual(1);
+  await expect(page.locator('#sdLevel')).toHaveValue('easy');
+  await expect(page.locator('#sdHints')).toHaveText('1');
 });
 
-test('2048 : une grille bloquée n\'est pas reprise', async ({ page }) => {
-  await openGame(page, '2048');
-  await page.evaluate(() => { tfBoard = [[2, 4, 2, 4], [4, 2, 4, 2], [16, 32, 16, 32], [8, 2, 4, 0]]; tfScore = 100; tfRender(); });
-  await page.keyboard.press('ArrowRight');                             // la grille se remplit et se bloque
+test('Sudoku : une grille terminée n\'est pas reprise', async ({ page }) => {
+  await openGame(page, 'Sudoku');
+  await page.evaluate(() => { for (let i = 0; i < 81; i++) sd.grid[i] = sd.solution[i]; sd.grid[sd.puzzle.findIndex(v => !v)] = 0; });
+  const cell = await page.evaluate(() => sd.puzzle.findIndex(v => !v));
+  await page.locator(`.sd-cell[data-i="${cell}"]`).click();
+  await page.locator(`#sdPad [data-n="${await page.evaluate(i => sd.solution[i], cell)}"]`).click();
   await modalReady(page);
   await page.keyboard.press('Escape');                                 // passer la saisie du score
   await page.keyboard.press('Escape');                                 // retour au menu
-  await expect(card(page, '2048').locator('[data-badge]')).toBeHidden();
+  await expect(card(page, 'Sudoku').locator('[data-badge]')).toBeHidden();
 });
 
 test('Wordle : essais joués, saisie en cours, clavier coloré et mot cible repris', async ({ page }) => {
@@ -115,13 +126,13 @@ test('Wordle : la longueur de mot est reprise avec la partie', async ({ page }) 
   expect(await page.evaluate(() => wdLen)).toBe(7);
 });
 
-test('la sauvegarde se fait aussi quand on ferme ou recharge la page', async ({ page }) => {
-  await openGame(page, '2048');
-  await page.evaluate(() => { tfBoard = [[2, 4, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]; tfScore = 50; tfRender(); });
-  await page.keyboard.press('ArrowRight');
+test('la sauvegarde se fait aussi quand on recharge la page', async ({ page }) => {
+  await openGame(page, 'Sudoku');
+  await page.evaluate(() => { const i = sd.puzzle.findIndex(v => !v); sdSelect(i); sdEnter(sd.solution[i]); });
+  const grid = await page.evaluate(() => sd.grid.join(''));
   await page.reload();
-  await card(page, '2048').click();
-  expect(await page.evaluate(() => tfScore)).toBe(50);
+  await card(page, 'Sudoku').click();
+  expect(await page.evaluate(() => sd.grid.join(''))).toBe(grid);
 });
 
 test('les cartes du menu comptent les parties et montrent le record du dernier niveau', async ({ page }) => {

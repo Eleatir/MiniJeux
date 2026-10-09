@@ -1,13 +1,14 @@
 # Mini-jeux
 
-Cinq petits jeux jouables dans le navigateur, sans installation ni dépendance : Wordle, Démineur, Snake, 2048 et Solitaire.
+Cinq petits jeux jouables dans le navigateur, sans installation ni dépendance : Wordle, Démineur, Snake, Sudoku et Solitaire.
 
 ## Ce que ça fait
 
 - **Scores d'arcade** : top 10 par jeu et par niveau, nom en 3 lettres, tableau consultable depuis le menu ; export / import en fichier JSON.
-- **Reprise de partie** : Wordle, Démineur, 2048 et Solitaire reprennent là où on les a laissés (Échap ou « Retour au menu » sauvegarde la partie). Le Snake demande confirmation avant de quitter.
+- **Reprise de partie** : Wordle, Démineur, Sudoku et Solitaire reprennent là où on les a laissés (Échap ou « Retour au menu » sauvegarde la partie). Le Snake demande confirmation avant de quitter.
 - **Confort** : Échap revient au menu, confirmation avant d'abandonner une partie, règles dépliables dans chaque jeu (ouvertes la première fois), pause automatique du Snake, Ctrl+Z et N au Solitaire.
 - **Réglages** (⚙) : effets sonores (désactivés par défaut), contraste élevé pour le daltonisme, animations activables/désactivables (la préférence « réduire les animations » du système est respectée).
+- **Ordinateur ou mobile** : l'appareil est détecté automatiquement (pointeur tactile ou navigateur mobile). Sur mobile : commandes tactiles dans chaque jeu (manette et glissement au Snake, appui long ou bouton 🚩 au Démineur, pavé numérique au Sudoku, glisser-déposer et double-tap au Solitaire), grandes zones à toucher, mise en page qui tient sur 320 px. Le réglage ⚙ « Affichage » permet de forcer l'un ou l'autre.
 - Tout est gardé dans le navigateur (`localStorage`), rien n'est envoyé nulle part.
 
 ## Lancer
@@ -21,12 +22,12 @@ npm install                       # une seule fois (installe Playwright)
 npx playwright install chromium   # une seule fois (télécharge le navigateur de test)
 
 npm run test:unit                 # logique pure, instantané, sans navigateur
-npm run test:e2e                  # un vrai Chromium joue aux cinq jeux
+npm run test:e2e                  # un vrai Chromium joue aux cinq jeux (ordinateur, puis téléphone émulé)
 npm test                          # les deux
 ```
 
-- `tests/unit/` : tests Node (`node --test`, sans aucune dépendance). Les scripts du jeu sont chargés dans un contexte isolé avec un faux navigateur (`helpers.js`) : règles du 2048, du Démineur et du Solitaire, calcul des couleurs du Wordle, intégrité des listes de mots et du dictionnaire, scores, import/export, sauvegardes.
-- `tests/e2e/` : tests Playwright qui jouent réellement dans Chromium (clavier, souris, glisser-déposer, reprise de partie, scores, réglages). Chaque test part d'un navigateur vierge et échoue à la moindre erreur dans la console.
+- `tests/unit/` : tests Node (`node --test`, sans aucune dépendance). Les scripts du jeu sont chargés dans un contexte isolé avec un faux navigateur (`helpers.js`) : générateur et solveur du Sudoku (solution unique), règles du Démineur et du Solitaire, calcul des couleurs du Wordle, intégrité des listes de mots et du dictionnaire, scores, import/export, sauvegardes.
+- `tests/e2e/` : tests Playwright qui jouent réellement dans Chromium (clavier, souris, glisser-déposer, reprise de partie, scores, réglages). Deux projets : **desktop** (tous les tests) et **mobile** (fichiers `*.mobile.spec.js`, téléphone Pixel 7 émulé : détection de l'appareil, gestes tactiles, mise en page). Chaque test part d'un navigateur vierge et échoue à la moindre erreur dans la console.
 - `PW_CHROMIUM_PATH=/chemin/vers/chrome npm run test:e2e` pour utiliser un Chromium déjà installé.
 - `npm start` sert le jeu sur http://localhost:4173.
 - La CI (`.github/workflows/tests.yml`) lance les deux séries à chaque pull request et à chaque push sur `main`.
@@ -38,6 +39,7 @@ index.html            page, menu et templates HTML de chaque jeu
 css/style.css         styles de toute l'application
 js/scores.js          tableaux de scores, saisie du nom, export/import
 js/settings.js        réglages et effets sonores
+js/device.js          détection ordinateur / mobile
 js/fx.js              effets visuels partagés (confettis)
 js/storage.js         parties sauvegardées et statistiques du menu
 js/core.js            registre des jeux (GAMES), navigation, confirmations

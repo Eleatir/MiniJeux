@@ -161,6 +161,7 @@ function wdMsg(txt, sticky) {
 function wdRenderGrid() {
   const g = document.getElementById('wdGrid');
   g.innerHTML = '';
+  g.style.setProperty('--wd-n', wdLen);   // les tuiles se réduisent pour tenir sur un écran étroit
   for (let r=0;r<WD_ROWS;r++) {
     const row = document.createElement('div');
     row.className = 'wd-row';

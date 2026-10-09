@@ -16,13 +16,39 @@ function snPause(on) {
   if (on) {
     clearInterval(snLoop);
     ov.style.display = 'flex';
-    ov.innerHTML = '<p>⏸ Pause</p><small>Espace pour reprendre</small>';
+    ov.innerHTML = '<p>⏸ Pause</p><small><span class="only-desktop">Espace pour reprendre</span><span class="only-mobile">Touche l\'écran ou ⏸ pour reprendre</span></small>';
   } else {
     ov.style.display = 'none';
     snLoop = setInterval(snTick, SN_SPEEDS[snDiff]);
   }
 }
 function snAutoPause(e) { if (e.type === 'blur' || document.hidden) snPause(true); }
+
+// Commandes tactiles : glisser sur la grille (virages enchaînés sans lever le doigt), manette, bouton pause, toucher pour démarrer/reprendre
+function snInitTouch() {
+  const cv = document.getElementById('snCanvas'), wrap = cv.parentElement;
+  let anchor = null, moved = false;
+  wrap.addEventListener('touchstart', e => { const t = e.touches[0]; anchor = { x: t.clientX, y: t.clientY }; moved = false; }, { passive: true });
+  wrap.addEventListener('touchmove', e => {
+    if (!anchor) return;
+    const t = e.touches[0], dx = t.clientX - anchor.x, dy = t.clientY - anchor.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+    moved = true;
+    snInput(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U'));
+    anchor = { x: t.clientX, y: t.clientY };
+  }, { passive: true });
+  wrap.addEventListener('touchend', e => {
+    if (anchor && !moved) {                         // simple toucher : démarrer, rejouer ou reprendre après une pause
+      if (snPaused) snPause(false);
+      else if (!snRunning) snInput('R');
+      e.preventDefault();
+    }
+    anchor = null;
+  });
+  document.querySelectorAll('#snPad [data-dir]').forEach(b =>
+    b.addEventListener('pointerdown', e => { e.preventDefault(); snInput(b.dataset.dir); }));
+  document.getElementById('snPause').addEventListener('pointerdown', e => { e.preventDefault(); if (snRunning) snPause(!snPaused); });
+}
 
 function snKeyHandler(e) {
   if ((e.key === ' ' || e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -74,7 +100,7 @@ function initSnake() {
   document.getElementById('snBest').textContent  = snBest;
   const ov = document.getElementById('snOverlay');
   ov.style.display = 'flex';
-  ov.innerHTML = '<p>🐍 Snake</p><small>Flèches ou ZQSD pour démarrer · Espace = pause</small>';
+  ov.innerHTML = '<p>🐍 Snake</p><small><span class="only-desktop">Flèches ou ZQSD pour démarrer · Espace = pause</span><span class="only-mobile">Glisse ou touche une flèche pour démarrer</span></small>';
   snDraw();
 }
 
@@ -116,7 +142,7 @@ function snGameOver(win) {
   if (win) Fx.confetti();
   const ov = document.getElementById('snOverlay');
   ov.style.display = 'flex';
-  ov.innerHTML = '<p>' + (win ? '🏆 Grille complète !' : '💀 Game over') + '</p><small>Score : ' + snScore + ' &nbsp;·&nbsp; Flèches ou ZQSD pour rejouer</small>';
+  ov.innerHTML = '<p>' + (win ? '🏆 Grille complète !' : '💀 Game over') + '</p><small>Score : ' + snScore + ' &nbsp;·&nbsp; <span class="only-desktop">Flèches ou ZQSD pour rejouer</span><span class="only-mobile">Glisse ou touche une flèche pour rejouer</span></small>';
   // Relancer sur prochaine touche directionnelle (géré dans snKeyHandler via snRunning=false)
   if (snScore > 0) scSubmit('snake', snDiff, snScore);
 }
@@ -161,6 +187,7 @@ function snDraw() {
 GAMES.snake = {
   start() {
     document.addEventListener('keydown', snKeyHandler);
+    snInitTouch();
     document.addEventListener('visibilitychange', snAutoPause);
     window.addEventListener('blur', snAutoPause);
     initSnake();

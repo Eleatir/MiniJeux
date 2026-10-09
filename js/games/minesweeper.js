@@ -11,6 +11,37 @@ let msCfg, msBoard, msRevealed, msFlagged, msMines,
 
 let msDiffKey = 'medium';
 
+// ── commandes tactiles : appui long = drapeau ; bouton « Drapeau » = chaque toucher pose / retire un drapeau ──
+let msFlagMode = false, msLastTouch = 0;
+
+function msSetFlagMode(on) {
+  msFlagMode = on;
+  const b = document.getElementById('msFlagBtn');
+  if (!b) return;
+  b.classList.toggle('on', on);
+  b.setAttribute('aria-pressed', on);
+  b.textContent = on ? '🚩 Drapeau : oui' : '🚩 Drapeau : non';
+}
+
+function msInitTouch(grid) {
+  let timer = null, long = null;
+  const cancel = () => { clearTimeout(timer); timer = null; };
+  grid.addEventListener('touchstart', e => {
+    msLastTouch = Date.now();
+    const c = e.target.closest('.cell');
+    long = null;
+    if (!c) return;
+    timer = setTimeout(() => { long = [+c.dataset.r, +c.dataset.c]; if (navigator.vibrate) navigator.vibrate(15); }, 450);
+  }, { passive: true });
+  grid.addEventListener('touchmove', cancel, { passive: true });
+  grid.addEventListener('touchcancel', () => { cancel(); long = null; });
+  grid.addEventListener('touchend', e => {
+    cancel();
+    msLastTouch = Date.now();
+    if (long) { e.preventDefault(); const [r, c] = long; long = null; msToggleFlag(r, c); }   // pose du drapeau au relâchement, sans clic derrière
+  });
+}
+
 function initMinesweeper(saved) {
   if (saved) document.getElementById('diff').value = saved.diff;
   msDiffKey  = document.getElementById('diff').value;
@@ -37,6 +68,10 @@ function initMinesweeper(saved) {
     msTimer = setInterval(() => { msElapsed++; document.getElementById('timer').textContent = msElapsed + 's'; }, 1000);
     msUpdateCount();
   }
+  msSetFlagMode(false);
+  document.getElementById('msFlagBtn').onclick = () => msSetFlagMode(!msFlagMode);
+  const grid = document.getElementById('msGrid');
+  if (!grid.dataset.touch) { grid.dataset.touch = '1'; msInitTouch(grid); }
   msShowBest();
   msRender();
 }
@@ -166,7 +201,8 @@ function msCheckWin() {
 
 function msRender() {
   const g=document.getElementById('msGrid');
-  g.style.gridTemplateColumns=`repeat(${msCfg.cols},32px)`;
+  g.style.gridTemplateColumns=`repeat(${msCfg.cols},var(--cell))`;
+  g.style.setProperty('--cols', msCfg.cols);
   g.innerHTML='';
   for (let r=0;r<msCfg.rows;r++) for (let c=0;c<msCfg.cols;c++) {
     const d=document.createElement('div');
@@ -179,8 +215,8 @@ function msRender() {
       if (msLost && !msMines.has(r*msCfg.cols+c)) { d.textContent='❌'; d.classList.add('wrong-flag'); }  // drapeau mal placé
       else d.textContent='🚩';
     }
-    d.addEventListener('click',()=>msClick(r,c));
-    d.addEventListener('contextmenu',e=>{ e.preventDefault(); msToggleFlag(r,c); });
+    d.addEventListener('click',()=>{ if (msFlagMode && !msRevealed[r][c]) msToggleFlag(r,c); else msClick(r,c); });
+    d.addEventListener('contextmenu',e=>{ e.preventDefault(); if (Date.now()-msLastTouch>1500) msToggleFlag(r,c); });   // un appui long tactile est géré à part
     d.addEventListener('auxclick',e=>{ if (e.button===1) { e.preventDefault(); msChord(r,c); } });  // clic molette = chording
     g.appendChild(d);
   }

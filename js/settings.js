@@ -3,12 +3,15 @@
    Les réglages sont gardés dans localStorage ; les sons sont désactivés par défaut.
 ════════════════════════════════════════════ */
 const SET_KEY = 'minijeux.settings.v1';
-const SET_DEFAULTS = { sound: false, contrast: false, motion: true };
+const SET_DEFAULTS = { sound: false, contrast: false, motion: true, device: 'auto' };
 const SET_LABELS = {
   sound:    ['🔊 Effets sonores', 'Petits bips pendant le jeu'],
   contrast: ['🎨 Contraste élevé', 'Couleurs adaptées au daltonisme (Wordle : orange et bleu)'],
-  motion:   ['✨ Animations', 'Glissements, retournements, confettis']
+  motion:   ['✨ Animations', 'Glissements, retournements, confettis'],
+  device:   ['📱 Affichage', '']                       // description calculée (appareil détecté)
 };
+const SET_DEVICE_NAMES = { auto: 'AUTO', mobile: 'MOBILE', desktop: 'ORDI' };
+const SET_DEVICE_CYCLE = ['auto', 'mobile', 'desktop'];
 
 const Settings = {
   data: null,
@@ -27,6 +30,7 @@ const Settings = {
   apply() {
     document.documentElement.classList.toggle('hc', !!this.get('contrast'));
     document.documentElement.classList.toggle('no-motion', !motionOK());
+    if (typeof Device !== 'undefined') Device.apply();
   }
 };
 
@@ -80,15 +84,23 @@ function setShow() {
   const render = () => {
     ui.panel.innerHTML =
       '<p class="sc-kicker">⚙ RÉGLAGES</p><div class="set-list">' +
-      keys.map((k, i) =>
-        '<button class="set-row' + (i === sel ? ' sel' : '') + '" data-k="' + k + '" role="switch" aria-checked="' + !!Settings.get(k) + '">' +
-        '<span><strong>' + SET_LABELS[k][0] + '</strong><small>' + SET_LABELS[k][1] + '</small></span>' +
-        '<span class="set-sw' + (Settings.get(k) ? ' on' : '') + '">' + (Settings.get(k) ? 'OUI' : 'NON') + '</span></button>').join('') +
+      keys.map((k, i) => {
+        const isDevice = k === 'device', v = Settings.get(k);
+        const desc = isDevice ? 'Appareil détecté : ' + (Device.detect() === 'mobile' ? 'mobile' : 'ordinateur') + ' · Auto, Mobile ou Ordi' : SET_LABELS[k][1];
+        return '<button class="set-row' + (i === sel ? ' sel' : '') + '" data-k="' + k + '"' + (isDevice ? '' : ' role="switch" aria-checked="' + !!v + '"') + '>' +
+          '<span><strong>' + SET_LABELS[k][0] + '</strong><small>' + desc + '</small></span>' +
+          '<span class="set-sw' + ((isDevice ? v !== 'auto' : v) ? ' on' : '') + '">' + (isDevice ? SET_DEVICE_NAMES[v] : v ? 'OUI' : 'NON') + '</span></button>';
+      }).join('') +
       '</div><p class="sc-hint">↑ ↓ choisir · Espace pour changer · Échap pour fermer</p>' +
       '<div class="sc-actions"><button class="btn" data-a="export">⬇ Exporter mes scores</button><button class="btn" data-a="import">⬆ Importer</button></div>' +
       '<div class="sc-actions"><button class="btn sc-ok" data-a="close">Fermer</button></div>';
   };
-  const toggle = k => { Settings.set(k, !Settings.get(k)); if (k === 'sound') Sfx.play('good'); render(); };
+  const toggle = k => {
+    if (k === 'device') Settings.set(k, SET_DEVICE_CYCLE[(SET_DEVICE_CYCLE.indexOf(Settings.get(k)) + 1) % SET_DEVICE_CYCLE.length]);
+    else Settings.set(k, !Settings.get(k));
+    if (k === 'sound') Sfx.play('good');
+    render();
+  };
   ui.key = e => {
     if (e.key === 'Escape') { scClose(); return; }
     if (e.key === 'ArrowUp') sel = (sel + keys.length - 1) % keys.length;

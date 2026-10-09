@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Mini-jeux</title>
 <link rel="stylesheet" href="css/style.css">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎮%3C/text%3E%3C/svg%3E">
@@ -12,7 +12,7 @@
 <!-- ══ MENU ══════════════════════════════════════════════════════════ -->
 <div id="menu">
   <p class="hub-title">Mini-jeux</p>
-  <p class="hub-sub">Tes petits compagnons de pause — clique sur un jeu disponible pour jouer</p>
+  <p class="hub-sub">Tes petits compagnons de pause — choisis un jeu pour commencer</p>
   <div class="menu-bar"><button class="btn" onclick="scShow(currentGame)">🏆 Meilleurs scores</button> <button class="btn" onclick="setShow()">⚙ Réglages</button></div>
   <div class="cards-grid">
     <div class="card ready" data-game="wordle" role="button" tabindex="0" onclick="startGame('wordle')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('wordle')}">
@@ -36,10 +36,10 @@
       <span class="badge ready" data-badge>▶ en cours</span>
       <p class="card-meta" data-meta></p>
     </div>
-    <div class="card ready" data-game="2048" role="button" tabindex="0" onclick="startGame('2048')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('2048')}">
-      <span class="card-icon">🧩</span>
-      <span class="card-name">2048</span>
-      <p class="card-desc">Fusionne les tuiles, atteins 2048</p>
+    <div class="card ready" data-game="sudoku" role="button" tabindex="0" onclick="startGame('sudoku')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();startGame('sudoku')}">
+      <span class="card-icon">🔢</span>
+      <span class="card-name">Sudoku</span>
+      <p class="card-desc">Remplis la grille sans aucun doublon</p>
       <span class="badge ready" data-badge>▶ en cours</span>
       <p class="card-meta" data-meta></p>
     </div>
@@ -80,15 +80,16 @@
     <span>Temps : <strong id="timer">0s</strong></span>
     <span>Record : <strong id="msBest">—</strong></span>
   </div>
+  <div class="ms-flagbar only-mobile"><button class="btn" id="msFlagBtn" aria-pressed="false">🚩 Drapeau : non</button></div>
   <div class="grid-wrap"><div class="ms-grid" id="msGrid"></div></div>
   <div class="banner" id="msBanner"></div>
-  <p class="hint">Clic gauche = révéler &nbsp;·&nbsp; Clic droit = drapeau &nbsp;·&nbsp; Clic sur un chiffre entouré d'autant de drapeaux = révèle les voisines (ou clic molette)</p>
+  <p class="hint"><span class="only-desktop">Clic gauche = révéler &nbsp;·&nbsp; Clic droit = drapeau &nbsp;·&nbsp; Clic sur un chiffre entouré d'autant de drapeaux = révèle les voisines (ou clic molette)</span><span class="only-mobile">Touche une case pour la révéler &nbsp;·&nbsp; Appui long (ou bouton 🚩) = drapeau &nbsp;·&nbsp; Touche un chiffre entouré d'autant de drapeaux = révèle les voisines</span></p>
   <details class="rules">
     <summary>Règles et fonctionnement</summary>
     <ul>
       <li><strong>But :</strong> révéler toutes les cases sans mine.</li>
       <li><strong>Chiffres :</strong> un chiffre indique le nombre de mines dans les 8 cases voisines.</li>
-      <li><strong>Clic gauche :</strong> révèle une case (la première est toujours sûre). <strong>Clic droit :</strong> pose ou retire un drapeau, dans la limite du nombre de mines.</li>
+      <li><strong>Clic gauche :</strong> révèle une case (la première est toujours sûre). <strong>Clic droit :</strong> pose ou retire un drapeau, dans la limite du nombre de mines. <strong>Sur mobile :</strong> toucher révèle, un appui long ou le bouton 🚩 pose un drapeau.</li>
       <li><strong>Chording :</strong> clique un chiffre déjà entouré d'autant de drapeaux (ou clic molette) pour révéler d'un coup les cases voisines non marquées. Attention : un drapeau mal placé déclenche une mine.</li>
       <li><strong>Score :</strong> temps de la victoire, par difficulté.</li>
     </ul>
@@ -117,15 +118,22 @@
     <canvas id="snCanvas" width="400" height="400"></canvas>
     <div class="sn-overlay" id="snOverlay">
       <p>🐍 Snake</p>
-      <small>Flèches ou ZQSD pour démarrer</small>
+      <small><span class="only-desktop">Flèches ou ZQSD pour démarrer</span><span class="only-mobile">Glisse ou touche une flèche pour démarrer</span></small>
     </div>
   </div>
-  <p class="hint" style="margin-top:8px;">Flèches directionnelles ou Z Q S D &nbsp;·&nbsp; Espace = pause &nbsp;·&nbsp; Le serpent traverse les murs</p>
+  <div class="sn-pad only-mobile" id="snPad">
+    <button class="btn" data-dir="U" aria-label="Haut" style="grid-area:u">▲</button>
+    <button class="btn" data-dir="L" aria-label="Gauche" style="grid-area:l">◀</button>
+    <button class="btn" id="snPause" aria-label="Pause" style="grid-area:p">⏸</button>
+    <button class="btn" data-dir="R" aria-label="Droite" style="grid-area:r">▶</button>
+    <button class="btn" data-dir="D" aria-label="Bas" style="grid-area:d">▼</button>
+  </div>
+  <p class="hint" style="margin-top:8px;"><span class="only-desktop">Flèches directionnelles ou Z Q S D &nbsp;·&nbsp; Espace = pause &nbsp;·&nbsp; </span><span class="only-mobile">Glisse sur la grille ou utilise la manette &nbsp;·&nbsp; ⏸ = pause &nbsp;·&nbsp; </span>Le serpent traverse les murs</p>
   <details class="rules">
     <summary>Règles et fonctionnement</summary>
     <ul>
       <li><strong>But :</strong> manger le plus de pommes possible sans te mordre la queue.</li>
-      <li><strong>Commandes :</strong> flèches ou Z Q S D pour tourner (la première touche lance la partie). Espace ou P met en pause ; la pause est automatique si tu quittes la fenêtre.</li>
+      <li><strong>Commandes :</strong> flèches ou Z Q S D sur ordinateur ; sur mobile, glisse le doigt sur la grille ou utilise la manette à l'écran. La première commande lance la partie. Espace, P ou le bouton ⏸ met en pause ; la pause est automatique si tu quittes la fenêtre.</li>
       <li><strong>Murs :</strong> le serpent les traverse et réapparaît de l'autre côté.</li>
       <li><strong>Niveaux :</strong> facile, moyen ou difficile = vitesse du serpent, avec un tableau de scores par niveau.</li>
       <li><strong>Fin :</strong> la partie s'arrête quand la tête touche le corps.</li>
@@ -133,32 +141,49 @@
   </details>
 </template>
 
-<!-- ══ TEMPLATE 2048 ═════════════════════════════════════════════════ -->
-<template id="tpl-2048">
+<!-- ══ TEMPLATE SUDOKU ═══════════════════════════════════════════════ -->
+<template id="tpl-sudoku">
   <div class="ms-header">
-    <span class="ms-title">🧩 2048</span>
+    <span class="ms-title">🔢 Sudoku</span>
     <div class="ms-controls">
-      <button class="btn" id="tfReset">Nouvelle partie</button>
+      <select id="sdLevel">
+        <option value="easy">Facile — 40 indices</option>
+        <option value="medium" selected>Moyen — 32 indices</option>
+        <option value="hard">Difficile — 26 indices</option>
+      </select>
+      <button class="btn" id="sdReset">Nouvelle grille</button>
     </div>
   </div>
   <div class="ms-stats">
-    <span class="tf-score">Score : <strong id="tfScore">0</strong><span class="tf-gain" id="tfGain" aria-hidden="true"></span></span>
-    <span>Meilleur : <strong id="tfBest">0</strong></span>
+    <span>Temps : <strong id="sdTime">0:00</strong></span>
+    <span>Indices : <strong id="sdHints">0</strong></span>
+    <span>Record : <strong id="sdBest">—</strong></span>
   </div>
-  <div class="tf-wrap"><div class="tf-board" id="tfBoard"></div></div>
-  <div class="banner" id="tfBanner"></div>
-  <p class="hint">Flèches ou Z Q S D &nbsp;·&nbsp; Deux tuiles identiques fusionnent</p>
+  <div class="sd-wrap"><div class="sd-grid" id="sdGrid" role="grid" aria-label="Grille de Sudoku"></div></div>
+  <div class="sd-pad" id="sdPad">
+    <button class="btn" data-n="1">1</button><button class="btn" data-n="2">2</button><button class="btn" data-n="3">3</button>
+    <button class="btn" data-n="4">4</button><button class="btn" data-n="5">5</button><button class="btn" data-n="6">6</button>
+    <button class="btn" data-n="7">7</button><button class="btn" data-n="8">8</button><button class="btn" data-n="9">9</button>
+  </div>
+  <div class="sd-tools" id="sdTools">
+    <button class="btn" data-a="notes" title="Notes (N)">✏️ Notes</button>
+    <button class="btn" data-a="erase" title="Effacer (Retour arrière)">⌫ Effacer</button>
+    <button class="btn" data-a="undo" title="Annuler (Ctrl+Z)">↶ Annuler</button>
+    <button class="btn" data-a="hint" title="Indice (H) : +30 s">💡 Indice</button>
+    <button class="btn" data-a="check" title="Signaler les erreurs">✓ Vérifier</button>
+  </div>
+  <div class="banner" id="sdBanner"></div>
+  <p class="hint">Choisis une case puis un chiffre &nbsp;·&nbsp; <span class="only-desktop">Flèches + 1-9 au clavier &nbsp;·&nbsp; N = notes &nbsp;·&nbsp; H = indice (+30 s)</span><span class="only-mobile">✏️ = notes &nbsp;·&nbsp; 💡 = indice (+30 s)</span></p>
   <details class="rules">
     <summary>Règles et fonctionnement</summary>
     <ul>
-      <li><strong>But :</strong> faire apparaître une tuile <strong>2048</strong> en fusionnant des tuiles.</li>
-      <li><strong>Déplacer :</strong> flèches du clavier ou touches Z Q S D. Toutes les tuiles glissent d'un coup dans la direction choisie, jusqu'au bord ou jusqu'à la tuile suivante.</li>
-      <li><strong>Fusionner :</strong> deux tuiles de même valeur qui se rencontrent deviennent une seule tuile de valeur double (2+2 = 4, 4+4 = 8…). Le score augmente de la valeur obtenue.</li>
-      <li><strong>Une fusion par tuile et par coup :</strong> en poussant la ligne 2-2-2-2 vers la gauche, on obtient 4-4, pas 8.</li>
-      <li><strong>Nouvelle tuile :</strong> après chaque déplacement qui change la grille, une tuile apparaît sur une case vide (un 2 dans 90 % des cas, un 4 sinon). Un déplacement sans effet ne compte pas.</li>
-      <li><strong>Victoire :</strong> à 2048, tu peux arrêter ou continuer pour battre ton score.</li>
-      <li><strong>Défaite :</strong> la grille est pleine et aucune fusion n'est possible.</li>
-      <li><strong>Astuce :</strong> garde ta plus grosse tuile dans un coin et évite de pousser dans la direction opposée.</li>
+      <li><strong>But :</strong> remplir la grille pour que chaque ligne, chaque colonne et chaque bloc de 3×3 contienne une seule fois les chiffres de 1 à 9.</li>
+      <li><strong>Grilles :</strong> générées à chaque partie, avec une seule solution possible. Plus il y a de cases données au départ, plus c'est facile.</li>
+      <li><strong>Jouer :</strong> clique ou touche une case, puis un chiffre du pavé ou du clavier. Retaper le même chiffre l'efface. Les cases de départ (en noir) ne bougent pas.</li>
+      <li><strong>Surbrillance :</strong> la ligne, la colonne et le bloc de la case choisie sont teintés, ainsi que les cases portant le même chiffre. Un doublon s'affiche en rouge.</li>
+      <li><strong>Notes ✏️ :</strong> note plusieurs chiffres possibles dans une case ; ils disparaissent tout seuls des cases voisines quand tu poses le chiffre.</li>
+      <li><strong>Indice 💡 :</strong> remplit la case choisie (ou une case au hasard) mais ajoute 30 secondes à ton score. <strong>Vérifier ✓</strong> signale tes erreurs un instant, sans pénalité.</li>
+      <li><strong>Score :</strong> ton temps (indices compris) à la victoire, par difficulté.</li>
     </ul>
   </details>
 </template>
@@ -182,15 +207,15 @@
   </div>
   <div class="sol-board" id="solBoard"></div>
   <div class="banner" id="solBanner"></div>
-  <p class="hint">Glisse-dépose une carte (ou clique-la puis sa destination) &nbsp;·&nbsp; Double-clic = fondation ou unique destination possible &nbsp;·&nbsp; Ctrl+Z = annuler &nbsp;·&nbsp; N = nouvelle donne &nbsp;·&nbsp; Fin de donne automatique &nbsp;·&nbsp; Roi sur colonne vide</p>
+  <p class="hint"><span class="only-desktop">Glisse-dépose une carte (ou clique-la puis sa destination) &nbsp;·&nbsp; Double-clic = fondation ou unique destination possible &nbsp;·&nbsp; Ctrl+Z = annuler &nbsp;·&nbsp; N = nouvelle donne</span><span class="only-mobile">Glisse une carte (ou touche-la puis sa destination) &nbsp;·&nbsp; Double-tap = fondation ou unique destination possible</span> &nbsp;·&nbsp; Fin de donne automatique &nbsp;·&nbsp; Roi sur colonne vide</p>
   <details class="rules">
     <summary>Règles et fonctionnement</summary>
     <ul>
       <li><strong>But :</strong> ranger les 52 cartes sur les 4 fondations, de l'as au roi, par couleur.</li>
       <li><strong>Colonnes :</strong> on empile en ordre décroissant en alternant rouge et noir (dame noire sur roi rouge). Seul un roi peut aller sur une colonne vide.</li>
       <li><strong>Pioche :</strong> clique-la pour retourner 1 ou 3 cartes ; quand elle est vide, clique pour la remélanger.</li>
-      <li><strong>Déplacer :</strong> glisse-dépose une carte (ou une suite), ou clique-la puis sa destination. Double-clic : vers une fondation, sinon vers la seule destination possible.</li>
-      <li><strong>Aides :</strong> Ctrl+Z annule, N lance une nouvelle donne. Quand toutes les cartes sont visibles et que la fin est assurée, elle se termine automatiquement.</li>
+      <li><strong>Déplacer :</strong> glisse-dépose une carte (ou une suite), ou clique-la puis sa destination. Double-clic (double-tap sur mobile) : vers une fondation, sinon vers la seule destination possible.</li>
+      <li><strong>Aides :</strong> le bouton Annuler (ou Ctrl+Z) annule, Nouvelle donne (ou N) relance. Quand toutes les cartes sont visibles et que la fin est assurée, elle se termine automatiquement.</li>
       <li><strong>Score :</strong> nombre de coups de la victoire, par mode de pioche.</li>
     </ul>
   </details>
@@ -226,6 +251,7 @@
 
 <script src="js/scores.js"></script>
 <script src="js/settings.js"></script>
+<script src="js/device.js"></script>
 <script src="js/fx.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/core.js"></script>
@@ -234,7 +260,7 @@
 <script src="js/games/wordle-dict.js"></script>
 <script src="js/games/wordle.js"></script>
 <script src="js/games/snake.js"></script>
-<script src="js/games/2048.js"></script>
+<script src="js/games/sudoku.js"></script>
 <script src="js/games/solitaire.js"></script>
 <script src="js/app.js"></script>
 </body>
