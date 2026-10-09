@@ -431,3 +431,13 @@
     .sc-row { grid-template-columns: 30px 48px 1fr 70px; }
   }
 
+  /* ── Pause : un voile cache la grille (pas de triche avec le chrono arrêté) ── */
+  #game-content { position: relative; }
+  .pause-overlay {
+    position: absolute; inset: 0; z-index: 30; min-height: 60vh;
+    background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+    cursor: pointer; border-radius: var(--radius-lg);
+  }
+  .pause-overlay p { font-size: 24px; font-weight: 500; }
+  .pause-overlay .btn.sc-ok { background: #ffd24a; color: #101018; border-color: #ffd24a; font-weight: 600; padding: 10px 22px; font-size: 16px; }
+

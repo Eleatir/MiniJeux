@@ -9,7 +9,7 @@ function normalize(str) {
 
 const WD_ROWS = 6;
 let wdLen, wdTarget, wdNormTarget, wdGuesses, wdCurrentRow, wdCurrentCol, wdOver, wdStart = null;
-let wdBusy = false, wdToken = 0, wdMsgTimer = null;   // wdBusy : révélation d'une ligne en cours
+let wdBusy = false, wdToken = 0, wdMsgTimer = null, wdPausedAt = 0;   // wdBusy : révélation d'une ligne en cours
 const WD_KB = [
   ['A','Z','E','R','T','Y','U','I','O','P'],
   ['Q','S','D','F','G','H','J','K','L','M'],
@@ -229,14 +229,17 @@ GAMES.wordle = {
     sel.addEventListener('change', () => { sel.blur(); confirmChange(sel, String(wdLen), () => initWordle(), 'Nouveau mot'); });
   },
   inProgress() { return !wdOver && (wdCurrentRow > 0 || wdCurrentCol > 0); },
+  canPause() { return !wdOver; },
+  pause() { wdPausedAt = Date.now(); },
+  resume() { if (wdStart && wdPausedAt) wdStart += Date.now() - wdPausedAt; wdPausedAt = 0; },
   save() {
     if (!GAMES.wordle.inProgress()) return null;
     return {
       len: wdLen, target: wdTarget, row: wdCurrentRow, col: wdCurrentCol, keys: wdKeyColors,
       guesses: wdGuesses.map(r => r.slice()),
       results: wdGuesses.map(r => (r._pending ? null : r._result || null)),   // une ligne en cours de révélation est reprise non validée
-      elapsed: wdStart ? Date.now() - wdStart : 0
+      elapsed: wdStart ? (wdPausedAt || Date.now()) - wdStart : 0
     };
   },
-  stop() { wdToken++; wdBusy = false; clearTimeout(wdMsgTimer); document.removeEventListener('keydown', wdKeyHandler); }
+  stop() { wdToken++; wdBusy = false; wdPausedAt = 0; clearTimeout(wdMsgTimer); document.removeEventListener('keydown', wdKeyHandler); }
 };

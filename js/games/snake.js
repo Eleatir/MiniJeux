@@ -4,25 +4,13 @@
 const SN_SPEEDS = { slow: 180, medium: 110, fast: 60 };
 const SN_COLS = 20, SN_ROWS = 20;
 
-let snLoop, snDir, snQueue = [], snBody, snFood, snScore, snBest = 0, snRunning, snDiff, snPaused = false;
+let snLoop, snDir, snQueue = [], snBody, snFood, snScore, snBest = 0, snRunning, snDiff, snPaused = false, snEnded = false;
 
-function snStop() { clearInterval(snLoop); snRunning = false; snPaused = false; }
+function snStop() { clearInterval(snLoop); snRunning = false; snPaused = false; }   // (n'efface pas snEnded : la partie finie le reste jusqu'au prochain initSnake)
 
-// Pause : Espace ou P ; automatique quand la fenêtre ou l'onglet perd le focus
-function snPause(on) {
-  if (!snRunning || on === snPaused) return;
-  snPaused = on;
-  const ov = document.getElementById('snOverlay');
-  if (on) {
-    clearInterval(snLoop);
-    ov.style.display = 'flex';
-    ov.innerHTML = '<p>⏸ Pause</p><small><span class="only-desktop">Espace pour reprendre</span><span class="only-mobile">Touche l\'écran ou ⏸ pour reprendre</span></small>';
-  } else {
-    ov.style.display = 'none';
-    snLoop = setInterval(snTick, SN_SPEEDS[snDiff]);
-  }
-}
-function snAutoPause(e) { if (e.type === 'blur' || document.hidden) snPause(true); }
+// Pause : bouton ⏸ de la barre, Espace ou P ; automatique quand la fenêtre ou l'onglet perd le focus (interface commune : js/core.js)
+function snPause(on) { if (on) pauseGame(); else resumeGame(); }
+function snAutoPause(e) { if (e.type === 'blur' || document.hidden) pauseGame(); }
 
 // Commandes tactiles : glisser sur la grille (virages enchaînés sans lever le doigt), manette, bouton pause, toucher pour démarrer/reprendre
 function snInitTouch() {
@@ -47,13 +35,13 @@ function snInitTouch() {
   });
   document.querySelectorAll('#snPad [data-dir]').forEach(b =>
     b.addEventListener('pointerdown', e => { e.preventDefault(); snInput(b.dataset.dir); }));
-  document.getElementById('snPause').addEventListener('pointerdown', e => { e.preventDefault(); if (snRunning) snPause(!snPaused); });
+  document.getElementById('snPause').addEventListener('pointerdown', e => { e.preventDefault(); if (snRunning) togglePause(); });
 }
 
 function snKeyHandler(e) {
   if ((e.key === ' ' || e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.metaKey && !e.altKey) {
     e.preventDefault();
-    if (snRunning) snPause(!snPaused);
+    if (snRunning) togglePause();
     return;
   }
   const map = {
@@ -89,6 +77,7 @@ function snInput(dir) {
 
 function initSnake() {
   snStop();
+  snEnded = false;
   snDiff   = document.getElementById('snDiff') ? document.getElementById('snDiff').value : 'medium';
   snBest   = scBest('snake', snDiff) || 0;
   snDir    = 'R'; snQueue = [];
@@ -138,6 +127,7 @@ function snTick() {
 
 function snGameOver(win) {
   snStop();
+  snEnded = true;
   Sfx.play(win ? 'win' : 'lose');
   if (win) Fx.confetti();
   const ov = document.getElementById('snOverlay');
@@ -199,7 +189,9 @@ GAMES.snake = {
     sel.addEventListener('change', () => { sel.blur(); confirmChange(sel, snDiff, initSnake, 'Rejouer'); });
   },
   inProgress() { return !!snRunning; },
-  pause() { snPause(true); },
+  canPause() { return !snEnded; },
+  pause() { if (snRunning) { clearInterval(snLoop); snPaused = true; } },
+  resume() { if (snRunning && snPaused) { snPaused = false; snLoop = setInterval(snTick, SN_SPEEDS[snDiff]); } },
   stop() {
     snStop();
     document.removeEventListener('keydown', snKeyHandler);

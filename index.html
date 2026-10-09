@@ -57,7 +57,7 @@
 <div id="game-shell">
   <div class="shell-bar">
     <button class="back-btn" onclick="leaveGame()">← Retour au menu</button>
-    <span class="shell-actions"><button class="btn" onclick="setShow()" aria-label="Réglages">⚙</button><button class="btn" onclick="scShow(currentGame)">🏆 Scores</button></span>
+    <span class="shell-actions"><button class="btn" id="pauseBtn" onclick="togglePause()" aria-label="Pause" aria-pressed="false">⏸</button><button class="btn" onclick="setShow()" aria-label="Réglages">⚙</button><button class="btn" onclick="scShow(currentGame)">🏆 Scores</button></span>
   </div>
   <div id="game-content"></div>
 </div>

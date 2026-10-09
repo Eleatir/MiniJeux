@@ -12,7 +12,12 @@ let msCfg, msBoard, msRevealed, msFlagged, msMines,
 let msDiffKey = 'medium';
 
 // ── commandes tactiles : appui long = drapeau ; bouton « Drapeau » = chaque toucher pose / retire un drapeau ──
-let msFlagMode = false, msLastTouch = 0;
+let msFlagMode = false, msLastTouch = 0, msPausedAt = 0;
+
+function msStartTimer() {
+  clearInterval(msTimer);
+  msTimer = setInterval(() => { msElapsed++; document.getElementById('timer').textContent = msElapsed + 's'; }, 1000);
+}
 
 function msSetFlagMode(on) {
   msFlagMode = on;
@@ -65,7 +70,7 @@ function initMinesweeper(saved) {
     msMines = new Set(saved.mines); msBoard = saved.board; msRevealed = saved.revealed; msFlagged = saved.flagged;
     msStarted = true; msStart = Date.now() - saved.elapsed; msElapsed = Math.floor(saved.elapsed / 1000);
     document.getElementById('timer').textContent = msElapsed + 's';
-    msTimer = setInterval(() => { msElapsed++; document.getElementById('timer').textContent = msElapsed + 's'; }, 1000);
+    msStartTimer();
     msUpdateCount();
   }
   msSetFlagMode(false);
@@ -138,10 +143,7 @@ function msClick(r, c) {
   if (msFlagged[r][c]) return;
   if (!msStarted) {
     msPlaceMines(r,c); msStarted=true; msStart=Date.now(); Stats.played('minesweeper', msDiffKey);
-    msTimer=setInterval(()=>{
-      msElapsed++;
-      document.getElementById('timer').textContent=msElapsed+'s';
-    },1000);
+    msStartTimer();
   }
   if (msBoard[r][c]===-1) { msRevealed[r][c]=true; msEnd(false,r,c); return; }
   Sfx.play('click');
@@ -226,10 +228,13 @@ function msRender() {
 GAMES.minesweeper = {
   wide: true,   // la grille « Difficile » (30 colonnes) dépasse la largeur standard
   start(saved) { initMinesweeper(saved); },
-  stop()  { clearInterval(msTimer); },
+  stop()  { clearInterval(msTimer); msPausedAt = 0; },
   inProgress() { return msStarted && !msOver; },
+  canPause() { return !msOver; },
+  pause() { clearInterval(msTimer); msPausedAt = Date.now(); },
+  resume() { if (msStarted && !msOver) { msStart += Date.now() - msPausedAt; msStartTimer(); } msPausedAt = 0; },
   save() {
     if (!GAMES.minesweeper.inProgress()) return null;
-    return { diff: msDiffKey, mines: [...msMines], board: msBoard, revealed: msRevealed, flagged: msFlagged, elapsed: Date.now() - msStart };
+    return { diff: msDiffKey, mines: [...msMines], board: msBoard, revealed: msRevealed, flagged: msFlagged, elapsed: (msPausedAt || Date.now()) - msStart };
   }
 };

@@ -110,13 +110,17 @@ function scToast(txt) {
   setTimeout(() => t.remove(), 3000);
 }
 
-function scClose() { if (scUI) { scUI.el.remove(); scUI = null; } }
+// keepPause : appelé en interne quand une fenêtre en remplace une autre (la pause ne doit pas clignoter)
+function scClose(keepPause) {
+  if (scUI) { scUI.el.remove(); scUI = null; }
+  if (!keepPause && typeof pausedByModal !== 'undefined' && pausedByModal) { pausedByModal = false; resumeGame(); }
+}
 
 function scOpen(handlers) {
-  scClose();
+  scClose(true);
   if (document.activeElement) document.activeElement.blur();
-  const g = typeof activeGame !== 'undefined' && activeGame && GAMES[activeGame];
-  if (g && g.pause) g.pause();
+  // pendant qu'une fenêtre est ouverte, la partie est en pause (elle repart à la fermeture, sauf si le joueur l'avait déjà mise en pause)
+  if (typeof pauseGame === 'function' && !pausedByModal && pauseGame()) pausedByModal = true;
   const el = document.createElement('div');
   el.className = 'sc-back';
   el.innerHTML = '<div class="sc-panel" role="dialog" aria-modal="true"></div>';

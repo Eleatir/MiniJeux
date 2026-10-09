@@ -35,7 +35,7 @@ test('Espace met en pause et reprend, la pause bloque les directions', async ({ 
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('Space');
   expect(await page.evaluate(() => snPaused)).toBe(true);
-  await expect(page.locator('#snOverlay')).toContainText('Pause');
+  await expect(page.locator('#pauseOverlay')).toContainText('Pause');
   const head = await page.evaluate(() => JSON.stringify(snBody[0]));
   await page.keyboard.press('ArrowLeft');
   expect(await page.evaluate(() => snQueue.length)).toBe(0);

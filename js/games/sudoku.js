@@ -364,6 +364,9 @@ GAMES.sudoku = {
   start(saved) { document.addEventListener('keydown', sdKeyHandler); initSudoku(saved); },
   stop() { sdStop(); document.removeEventListener('keydown', sdKeyHandler); },
   inProgress() { return !!sd && sd.started && !sd.won && !sd.lost; },
+  canPause() { return !!sd && !sd.won && !sd.lost && !sd.auto; },
+  pause() { sdClockStop(); },
+  resume() { if (sd.started) sdClockStart(); },
   save() {
     if (!GAMES.sudoku.inProgress()) return null;
     return { level: sd.level, puzzle: sd.puzzle, solution: sd.solution, grid: sd.grid, notes: sd.notes,

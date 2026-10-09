@@ -499,6 +499,9 @@ GAMES.solitaire = {
   start(saved) { document.addEventListener('keydown', solKeyHandler); initSolitaire(saved); },
   stop()  { solStop(); document.removeEventListener('keydown', solKeyHandler); },
   inProgress() { return !!sol && sol.moves > 0 && !sol.won; },
+  canPause() { return !!sol && !sol.won && !solAuto; },
+  pause() { solClockStop(); },
+  resume() { if (sol.moves > 0) solClockStart(); },
   save() {
     if (!GAMES.solitaire.inProgress()) return null;
     return { sol, hist: solHist.slice(-40), elapsed: solElapsed };
